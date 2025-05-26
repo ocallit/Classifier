@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ocClasificame Demo - Complete with Read-Only Support</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Link to your external CSS file -->
+    <link rel="stylesheet" href="oc_clasificame.css">
+    
+    <style>
+        /* Additional demo-specific styles */
+        .demo-container {
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .demo-title {
+            color: #2a5bb1;
+            margin-bottom: 30px;
+        }
+
+        .demo-section {
+            margin: 40px 0;
+            padding: 30px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .demo-section h3 {
+            color: #2a5bb1;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+        }
+
+        .demo-section p {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .demo-btn {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+            margin: 8px;
+        }
+
+        .demo-btn:hover {
+            background: #45a049;
+        }
+
+        .demo-btn.readonly {
+            background: #ff9800;
+        }
+
+        .demo-btn.readonly:hover {
+            background: #f57c00;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1 class="demo-title">ocClasificame Demo - Complete with Read-Only Support</h1>
+        
+        <div class="demo-section">
+            <h3>Editable Modes</h3>
+            <p>These modes allow full interaction - dragging, clicking, saving, and modifying classifications.</p>
+            <button class="demo-btn" onclick="openIndividualOnly()">Individual Method Only</button>
+            <button class="demo-btn" onclick="openGroupOnly()">Group Method Only</button>
+            <button class="demo-btn" onclick="openIndividualWithEdit()">Individual with add</button>
+        </div>
+        
+        <div class="demo-section">
+            <h3>Read-Only Modes</h3>
+            <p>These modes display the classification in read-only format. No dragging, no editing, no saving - perfect for viewing existing classifications.</p>
+            <button class="demo-btn readonly" onclick="openReadOnlyMode()">Read-Only View</button>
+            <button class="demo-btn readonly" onclick="openReadOnlyWithData()">Read-Only with Pre-classified Data</button>
+        </div>
+        
+        <div class="demo-section">
+            <h3>Edge Cases</h3>
+            <p>Test scenarios for validation and edge case handling.</p>
+            <button class="demo-btn" onclick="openNeither()">Neither Method (Fallback to Individual)</button>
+            <button class="demo-btn readonly" onclick="openReadOnlyNoToolbar()">Read-Only without Toolbar</button>
+        </div>
+    </div>
+    
+    <!-- Link to your external JavaScript file -->
+    <script src="oc_clasificame.js"></script>
+    
+    <script>
+        const permissions = [
+            {id: 'none', label: 'X', title: 'No Permission'},
+            {id: 'read', label: 'RO', title: 'Read Only'},
+            {id: 'write', label: 'RW', title: 'Read/Write'}
+        ];
+        
+        const users = [
+            {id: 1, name: "John Doe", category: "none"},
+            {id: 2, name: "Jane Smith", category: "read"},
+            {id: 3, name: "Alice Johnson", category: "write"},
+            {id: 4, name: "Bob Williams", category: "none"},
+            {id: 5, name: "Charlie Brown", category: "read"},
+            {id: 6, name: "Diana Prince", category: "write"},
+            {id: 7, name: "Edward Norton", category: "none"},
+            {id: 8, name: "Fiona Apple", category: "read"}
+        ];
+        
+        const savedClassifications = [
+            {
+                id: "1",
+                name: "Admins Only",
+                description: "Give admin privileges to senior staff members",
+                classification: {
+                    none: ["4", "7"],
+                    read: ["1", "2", "8"],
+                    write: ["3", "5", "6"]
+                }
+            },
+            {
+                id: "2", 
+                name: "Read-Only Setup",
+                description: "Most users get read access, few get write access",
+                classification: {
+                    none: ["4"],
+                    read: ["1", "2", "5", "7", "8"],
+                    write: ["3", "6"]
+                }
+            }
+        ];
+        
+        const sampleGroups = [
+            {
+                id: 'admin',
+                name: 'Administrators',
+                itemCount: 2,
+                description: 'System administrators with full access'
+            },
+            {
+                id: 'users',
+                name: 'Regular Users', 
+                itemCount: 4,
+                description: 'Standard users with basic access'
+            },
+            {
+                id: 'managers',
+                name: 'Managers',
+                itemCount: 3,
+                description: 'Department managers and supervisors'
+            }
+        ];
+        
+        // EDITABLE MODES
+        async function openIndividualOnly() {
+            const userCategories = new ocClasificame(permissions, users, {
+                title: 'User Permission Classification',
+                valueId: 'id',
+                valueDisplay: 'name',
+                valueColumnKey: 'category',
+                editable: true,
+                showToolbar: true,
+                savedClassifications: savedClassifications,
+                showIndividualMethod: true,
+                canSaveIndividualMethod: false,
+                showGroupMethod: false,
+                groups: sampleGroups
+            });
+            
+            try {
+                const result = await userCategories.open({
+                    title: 'Individual Classification Only'
+                });
+                
+                console.log('Classification saved successfully!');
+                console.log('Results:', result);
+                
+            } catch (error) {
+                console.log('Classification cancelled:', error.message);
+            }
+        }
+        
+        async function openGroupOnly() {
+            const userCategories = new ocClasificame(permissions, users, {
+                title: 'User Permission Classification',
+                valueId: 'id',
+                valueDisplay: 'name',
+                valueColumnKey: 'category',
+                editable: true,
+                showToolbar: true,
+                savedClassifications: savedClassifications,
+                showIndividualMethod: false,
+                canSaveIndividualMethod: false,
+                showGroupMethod: true,
+                groups: sampleGroups
+            });
+            
+            try {
+                const result = await userCategories.open({
+                    title: 'Group Classification Only'
+                });
+                
+                console.log('Classification saved successfully!');
+                console.log('Results:', result);
+                
+            } catch (error) {
+                console.log('Classification cancelled:', error.message);
+            }
+        }
+        
+        async function openIndividualWithEdit() {
+            const userCategories = new ocClasificame(permissions, users, {
+                title: 'User Permission Classification',
+                valueId: 'id',
+                valueDisplay: 'name',
+                valueColumnKey: 'category',
+                editable: true,
+                showToolbar: true,
+                savedClassifications: savedClassifications,
+                showIndividualMethod: true,
+                canSaveIndividualMethod: true,
+                showGroupMethod: false,
+                groups: sampleGroups
+            });
+            
+            try {
+                const result = await userCategories.open({
+                    title: 'Both Methods Available'
+                });
+                
+                console.log('Classification saved successfully!');
+                console.log('Results:', result);
+                
+            } catch (error) {
+                console.log('Classification cancelled:', error.message);
+            }
+        }
+        
+        // READ-ONLY MODES
+        async function openReadOnlyMode() {
+            const userCategories = new ocClasificame(permissions, users, {
+                title: 'User Permission Classification',
+                valueId: 'id',
+                valueDisplay: 'name',
+                valueColumnKey: 'category',
+                editable: false, // READ-ONLY MODE
+                showToolbar: true,
+                savedClassifications: savedClassifications,
+                showIndividualMethod: true,
+                canSaveIndividualMethod: false,
+                showGroupMethod: false,
+                groups: sampleGroups
+            });
+            
+            try {
+                const result = await userCategories.open({
+                    title: 'Read-Only Classification View'
+                });
+                
+                console.log('Dialog closed (read-only mode)');
+                
+            } catch (error) {
+                console.log('Dialog closed:', error.message);
+            }
+        }
+        
+        async function openReadOnlyWithData() {
+            // Pre-classify some users for demonstration
+            const preclassifiedUsers = [
+                {id: 1, name: "John Doe", category: "read"},
+                {id: 2, name: "Jane Smith", category: "write"},
+                {id: 3, name: "Alice Johnson", category: "write"},
+                {id: 4, name: "Bob Williams", category: "none"},
+                {id: 5, name: "Charlie Brown", category: "read"},
+                {id: 6, name: "Diana Prince", category: "write"},
+                {id: 7, name: "Edward Norton", category: "none"},
+                {id: 8, name: "Fiona Apple", category: "read"}
+            ];
+            
+            const userCategories = new ocClasificame(permissions, preclassifiedUsers, {
+                title: 'User Permission Classification',
+                valueId: 'id',
+                valueDisplay: 'name',
+                valueColumnKey: 'category',
+                editable: false, // READ-ONLY MODE
+                showToolbar: true,
+                savedClassifications: savedClassifications,
+                showIndividualMethod: true,
+                canSaveIndividualMethod: false,
+                showGroupMethod: false,
+                groups: sampleGroups
+            });
+            
+            try {
+                const result = await userCategories.open({
+                    title: 'Read-Only View with Pre-classified Data'
+                });
+                
+                console.log('Dialog closed (read-only mode)');
+                
+            } catch (error) {
+                console.log('Dialog closed:', error.message);
+            }
+        }
+        
+        async function openReadOnlyNoToolbar() {
+            const userCategories = new ocClasificame(permissions, users, {
+                title: 'User Permission Classification',
+                valueId: 'id',
+                valueDisplay: 'name',
+                valueColumnKey: 'category',
+                editable: false, // READ-ONLY MODE
+                showToolbar: false, // NO TOOLBAR
+                savedClassifications: [],
+                showIndividualMethod: true,
+                canSaveIndividualMethod: false,
+                showGroupMethod: false,
+                groups: []
+            });
+            
+            try {
+                const result = await userCategories.open({
+                    title: 'Read-Only View without Toolbar'
+                });
+                
+                console.log('Dialog closed (read-only mode)');
+                
+            } catch (error) {
+                console.log('Dialog closed:', error.message);
+            }
+        }
+        
+        // EDGE CASES
+        async function openNeither() {
+            const userCategories = new ocClasificame(permissions, users, {
+                title: 'User Permission Classification',
+                valueId: 'id',
+                valueDisplay: 'name',
+                valueColumnKey: 'category',
+                editable: true,
+                showToolbar: true,
+                savedClassifications: savedClassifications,
+                showIndividualMethod: false, // BOTH FALSE
+                canSaveIndividualMethod: false,
+                showGroupMethod: false, // BOTH FALSE
+                groups: sampleGroups
+            });
+            
+            try {
+                const result = await userCategories.open({
+                    title: 'Fallback to Individual (Both Methods Disabled)'
+                });
+                
+                console.log('Classification saved successfully!');
+                console.log('Results:', result);
+                
+            } catch (error) {
+                console.log('Classification cancelled:', error.message);
+            }
+        }
+    </script>
+</body>
+</html>

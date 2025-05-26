@@ -1,0 +1,960 @@
+class ocClasificame {
+    constructor(categories, items, options = {}) {
+        this.categories = categories;
+        this.items = items;
+        this.options = {
+            title: 'Classification',
+            valueId: 'id',
+            valueDisplay: 'name',
+            valueColumnKey: 'category',
+            editable: true,
+            showToolbar: true,
+            savedClassifications: [],
+            showIndividualMethod: true,
+            canSaveIndividualMethod: false,
+            showGroupMethod: false,
+            groups: [],
+            apiEndpoints: {
+                save: '/api/classifications/save',
+                load: '/api/classifications/list',
+                getGroups: '/api/groups/list',
+                getGroupItems: '/api/groups/:groupId/items'
+            },
+            ...options
+        };
+        
+        this.currentValues = {};
+        this.sortableInstances = [];
+        this.dialogElement = null;
+        this.isOpen = false;
+        this.currentMode = this.determineMode();
+        this.selectedGroupItems = [];
+        
+        this.initializeValues();
+    }
+    
+    determineMode() {
+        // If not editable, force individual mode for display only
+        if (!this.options.editable) {
+            return 'individual';
+        }
+        
+        if (this.options.showIndividualMethod && !this.options.showGroupMethod) {
+            return 'individual';
+        } else if (!this.options.showIndividualMethod && this.options.showGroupMethod) {
+            return 'group';
+        } else if (this.options.showIndividualMethod && this.options.showGroupMethod) {
+            return 'individual';
+        } else {
+            return 'individual';
+        }
+    }
+    
+    initializeValues() {
+        this.categories.forEach(cat => {
+            this.currentValues[cat.id] = [];
+        });
+        
+        this.items.forEach(item => {
+            const categoryId = item[this.options.valueColumnKey] || this.categories[0].id;
+            if (this.currentValues[categoryId]) {
+                this.currentValues[categoryId].push(item[this.options.valueId]);
+            }
+        });
+    }
+    
+    open(dialogOptions = {}) {
+        return new Promise((resolve, reject) => {
+            this.resolve = resolve;
+            this.reject = reject;
+            
+            this.createDialog(dialogOptions);
+            
+            // Only setup sortable if editable
+            if (this.options.editable) {
+                this.setupSortable();
+            }
+            
+            this.setupEventListeners();
+            this.updateCounters();
+            
+            this.isOpen = true;
+            this.dialogElement.classList.add('open');
+        });
+    }
+    
+    createDialog(dialogOptions) {
+        const defaultOptions = {
+            title: this.options.title,
+            width: '95vw',
+            height: '85vh'
+        };
+        
+        const opts = { ...defaultOptions, ...dialogOptions };
+        
+        // Modify footer buttons based on editable state
+        const footerButtons = this.options.editable 
+            ? `<button class="oc-btn oc-btn-secondary" data-action="cancel">Cancel</button>
+               <button class="oc-btn oc-btn-primary" data-action="save">Save</button>`
+            : `<button class="oc-btn oc-btn-primary" data-action="close">Close</button>`;
+        
+        this.dialogElement = document.createElement('div');
+        this.dialogElement.className = 'oc-dialog';
+        
+        // Add read-only class if not editable
+        if (!this.options.editable) {
+            this.dialogElement.classList.add('oc-readonly');
+        }
+        
+        this.dialogElement.innerHTML = `
+            <div class="oc-dialog-content">
+                <div class="oc-dialog-header">
+                    <h2 class="oc-dialog-title">${opts.title}${!this.options.editable ? ' (Read Only)' : ''}</h2>
+                    <button class="oc-dialog-close" type="button">×</button>
+                </div>
+                <div class="oc-dialog-body">
+                    ${this.createContent()}
+                </div>
+                <div class="oc-dialog-footer">
+                    ${footerButtons}
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(this.dialogElement);
+    }
+
+    createContent() {
+        if (this.currentMode === 'individual') {
+            return this.createIndividualSectionHTML();
+        } else if (this.currentMode === 'group') {
+            return this.createGroupSectionHTML();
+        }
+        return this.createIndividualSectionHTML();
+    }
+    
+    createIndividualSectionHTML() {
+        const columnsHTML = this.categories.map((category, index) => {
+            const isFirst = index === 0;
+            const isLast = index === this.categories.length - 1;
+            const leftCategory = isFirst ? null : this.categories[index - 1];
+            const rightCategory = isLast ? null : this.categories[index + 1];
+            
+            // Hide navigation buttons if not editable
+            const navigationHTML = this.options.editable ? `
+                <div class="oc-column-navigation">
+                    ${!isFirst ? `<button class="oc-nav-btn" data-action="move-left" data-from="${category.id}" data-to="${leftCategory.id}">
+                        <i class="fas fa-arrow-left"></i> ${leftCategory.label}
+                    </button>` : '<span></span>'}
+                    <div class="oc-counter" data-category="${category.id}">
+                        <span class="count">0</span> items
+                    </div>
+                    ${!isLast ? `<button class="oc-nav-btn" data-action="move-right" data-from="${category.id}" data-to="${rightCategory.id}">
+                        ${rightCategory.label} <i class="fas fa-arrow-right"></i>
+                    </button>` : '<span></span>'}
+                </div>
+            ` : `
+                <div class="oc-column-navigation">
+                    <div class="oc-counter" data-category="${category.id}">
+                        <span class="count">0</span> items
+                    </div>
+                </div>
+            `;
+            
+            return `
+            <div class="oc-column">
+                <div class="oc-column-header">
+                    <div class="oc-column-title">${category.title || category.label}</div>
+                </div>
+                <div class="oc-items-list" data-category="${category.id}">
+                    ${this.createItemsHTML(category.id)}
+                </div>
+                ${navigationHTML}
+            </div>
+        `;
+        }).join('');
+        
+        // Hide classification manager if not editable
+        const classificationManagerHTML = this.options.editable && 
+            (this.options.canSaveIndividualMethod || this.options.savedClassifications.length > 0) 
+            ? this.createClassificationManagerHTML() : '';
+        
+        // Hide search if not editable
+        const searchHTML = this.options.editable ? `
+            <div class="oc-search-stats-row">
+                <div class="oc-global-search">
+                    <input type="text" class="oc-search-input" placeholder="🔎 Search all items">
+                    <button class="oc-search-clear">×</button>
+                </div>
+                <div class="oc-stats">
+                    Total: <span id="total-count">${this.items.length}</span> items
+                </div>
+            </div>
+        ` : `
+            <div class="oc-search-stats-row">
+                <div class="oc-stats">
+                    Total: <span id="total-count">${this.items.length}</span> items
+                </div>
+            </div>
+        `;
+        
+        return `
+            <div class="oc-clasificame">
+                ${classificationManagerHTML}
+                ${searchHTML}
+                <div class="oc-columns">
+                    ${columnsHTML}
+                </div>
+            </div>
+        `;
+    }
+    
+    createGroupSectionHTML() {
+        // If not editable, show individual mode instead
+        if (!this.options.editable) {
+            return this.createIndividualSectionHTML();
+        }
+        
+        const groupOptions = this.options.groups.map(group => 
+            `<option value="${group.id}">${group.name} (${group.itemCount} items)</option>`
+        ).join('');
+        
+        const categoryOptions = this.categories.map(category =>
+            `<option value="${category.id}">${category.title || category.label}</option>`
+        ).join('');
+
+        const columnsHTML = this.categories.map((category, index) => {
+            const isFirst = index === 0;
+            const isLast = index === this.categories.length - 1;
+            const leftCategory = isFirst ? null : this.categories[index - 1];
+            const rightCategory = isLast ? null : this.categories[index + 1];
+            
+            return `
+            <div class="oc-column">
+                <div class="oc-column-header">
+                    <div class="oc-column-title">${category.title || category.label}</div>
+                </div>
+                <div class="oc-items-list" data-category="${category.id}">
+                    ${this.createItemsHTML(category.id)}
+                </div>
+                <div class="oc-column-navigation">
+                    ${!isFirst ? `<button class="oc-nav-btn" data-action="move-left" data-from="${category.id}" data-to="${leftCategory.id}">
+                        <i class="fas fa-arrow-left"></i> ${leftCategory.label}
+                    </button>` : '<span></span>'}
+                    <div class="oc-counter" data-category="${category.id}">
+                        <span class="count">0</span> items
+                    </div>
+                    ${!isLast ? `<button class="oc-nav-btn" data-action="move-right" data-from="${category.id}" data-to="${rightCategory.id}">
+                        ${rightCategory.label} <i class="fas fa-arrow-right"></i>
+                    </button>` : '<span></span>'}
+                </div>
+            </div>
+        `;
+        }).join('');
+        
+        return `
+            <div class="oc-group-section">
+                <div class="oc-group-controls">
+                    <div class="oc-group-control">
+                        <label>Select Group</label>
+                        <select class="oc-group-select" id="group-selector">
+                            <option value="">Choose a group...</option>
+                            ${groupOptions}
+                        </select>
+                    </div>
+                    
+                    <div class="oc-group-control">
+                        <label>Classify To</label>
+                        <select class="oc-group-target-select" id="group-target" disabled>
+                            <option value="">Select classification...</option>
+                            ${categoryOptions}
+                        </select>
+                    </div>
+                    
+                    <div class="oc-group-control">
+                        <label>&nbsp;</label>
+                        <button class="oc-group-btn" id="apply-group-classification" disabled>
+                            Apply Classification
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="oc-search-stats-row">
+                    <div class="oc-global-search">
+                        <input type="text" class="oc-search-input" placeholder="🔎 Search all items">
+                        <button class="oc-search-clear">×</button>
+                    </div>
+                    <div class="oc-stats">
+                        Total: <span id="total-count">${this.items.length}</span> items
+                    </div>
+                </div>
+                
+                <div class="oc-columns">
+                    ${columnsHTML}
+                </div>
+            </div>
+        `;
+    }
+    
+    createClassificationManagerHTML() {
+        if (!this.options.showIndividualMethod || !this.options.editable) {
+            return '';
+        }
+        
+        const savedOptions = this.options.savedClassifications.map(classification => 
+            `<option value="${classification.id}" data-description="${classification.description}">${classification.name}</option>`
+        ).join('');
+        
+        const showSaveSection = this.options.canSaveIndividualMethod && this.options.showIndividualMethod;
+        
+        return `
+            <div class="oc-classification-manager">
+                ${showSaveSection ? `
+                <div class="oc-manager-group">
+                    <label>Save Current Classification</label>
+                    <input type="text" class="oc-manager-input" id="save-name" placeholder="Classification name">
+                    <textarea class="oc-manager-textarea" id="save-description" placeholder="Short description"></textarea>
+                    <button class="oc-manager-btn save" id="save-classification">Save Classification</button>
+                </div>
+                ` : ''}
+                
+                <div class="oc-manager-group">
+                    <label>Load Saved Classification</label>
+                    <select class="oc-manager-select" id="load-classification">
+                        <option value="">Select a saved classification...</option>
+                        ${savedOptions}
+                    </select>
+                    <div class="oc-manager-description" id="classification-description">
+                        Select a classification to see its description
+                    </div>
+                    <button class="oc-manager-btn load" id="apply-classification" disabled>Reclassify As</button>
+                </div>
+            </div>
+        `;
+    }
+    
+    createItemsHTML(categoryId) {
+        const categoryItems = this.items.filter(item => {
+            const itemCategory = item[this.options.valueColumnKey] || this.categories[0].id;
+            return itemCategory === categoryId;
+        });
+        
+        return categoryItems.map(item => {
+            const itemId = item[this.options.valueId];
+            const itemLabel = item[this.options.valueDisplay];
+            const currentCategory = item[this.options.valueColumnKey] || this.categories[0].id;
+            
+            // Hide toolbar if not editable or showToolbar is false
+            const toolbarHTML = this.options.editable && this.options.showToolbar ? `
+                <div class="oc-item-toolbar">
+                    ${this.categories.map(cat => `
+                        <button class="oc-item-btn ${currentCategory === cat.id ? 'pressed' : ''}" 
+                                data-target="${cat.id}" 
+                                data-item-id="${itemId}">
+                            ${cat.label}
+                        </button>
+                    `).join('')}
+                </div>
+            ` : '';
+            
+            // Add read-only class if not editable
+            const itemClass = this.options.editable ? 'oc-item' : 'oc-item oc-item-readonly';
+            
+            return `
+                <div class="${itemClass}" data-item-id="${itemId}" data-category="${currentCategory}">
+                    <span class="oc-item-label">${itemLabel}</span>
+                    ${toolbarHTML}
+                </div>
+            `;
+        }).join('');
+    }
+    
+    setupSortable() {
+        if (!this.options.editable || (this.currentMode !== 'individual' && this.currentMode !== 'group')) {
+            return;
+        }
+        
+        const lists = this.dialogElement.querySelectorAll('.oc-items-list');
+        
+        lists.forEach(list => {
+            const sortable = new Sortable(list, {
+                group: 'clasificame-items',
+                animation: 150,
+                easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+                forceFallback: false,
+                fallbackTolerance: 3,
+                delay: 100,
+                delayOnTouchOnly: true,
+                touchStartThreshold: 10,
+                swapThreshold: 0.65,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                
+                onStart: (evt) => {
+                    document.body.style.cursor = 'grabbing';
+                },
+                
+                onEnd: (evt) => {
+                    document.body.style.cursor = '';
+                    
+                    const item = evt.item;
+                    const newCategory = evt.to.dataset.category;
+                    const itemId = item.dataset.itemId;
+                    
+                    item.dataset.category = newCategory;
+                    this.updateItemToolbar(item, newCategory);
+                    this.updateCounters();
+                    
+                    const originalItem = this.items.find(i => i[this.options.valueId] == itemId);
+                    if (originalItem) {
+                        originalItem[this.options.valueColumnKey] = newCategory;
+                    }
+                    
+                    console.log(`Item ${itemId} moved to ${newCategory}`);
+                }
+            });
+            
+            this.sortableInstances.push(sortable);
+        });
+    }
+    
+    setupEventListeners() {
+        this.dialogElement.querySelector('.oc-dialog-close').addEventListener('click', () => {
+            this.close(false);
+        });
+        
+        // Handle different button types based on editable state
+        if (this.options.editable) {
+            const cancelBtn = this.dialogElement.querySelector('[data-action="cancel"]');
+            const saveBtn = this.dialogElement.querySelector('[data-action="save"]');
+            
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', () => {
+                    this.close(false);
+                });
+            }
+            
+            if (saveBtn) {
+                saveBtn.addEventListener('click', () => {
+                    this.close(true);
+                });
+            }
+        } else {
+            const closeBtn = this.dialogElement.querySelector('[data-action="close"]');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    this.close(false);
+                });
+            }
+        }
+
+        if (this.options.editable) {
+            if (this.currentMode === 'individual') {
+                this.setupIndividualModeListeners();
+            } else if (this.currentMode === 'group') {
+                this.setupGroupModeListeners();
+            }
+        }
+        
+        document.addEventListener('keydown', this.handleKeydown.bind(this));
+        
+        this.dialogElement.addEventListener('click', (e) => {
+            if (e.target === this.dialogElement) {
+                this.close(false);
+            }
+        });
+    }
+    
+    setupIndividualModeListeners() {
+        if (!this.options.editable) return;
+        
+        const globalSearch = this.dialogElement.querySelector('.oc-search-input');
+        if (globalSearch) {
+            globalSearch.addEventListener('input', (e) => {
+                this.performGlobalSearch(e.target.value);
+            });
+            
+            const clearBtn = this.dialogElement.querySelector('.oc-search-clear');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', () => {
+                    globalSearch.value = '';
+                    this.performGlobalSearch('');
+                });
+            }
+        }
+        
+        this.dialogElement.addEventListener('click', (e) => {
+            if (e.target.classList.contains('oc-item-btn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                const targetCategory = e.target.dataset.target;
+                const itemId = e.target.dataset.itemId;
+                this.moveItemTo(itemId, targetCategory);
+            }
+        });
+        
+        this.dialogElement.addEventListener('click', (e) => {
+            if (e.target.closest('.oc-nav-btn')) {
+                const btn = e.target.closest('.oc-nav-btn');
+                const fromCategory = btn.dataset.from;
+                const toCategory = btn.dataset.to;
+                this.moveVisibleItems(fromCategory, toCategory);
+            }
+        });
+        
+        if (this.options.canSaveIndividualMethod || this.options.savedClassifications.length > 0) {
+            this.setupClassificationManager();
+        }
+    }
+    
+    setupGroupModeListeners() {
+        if (!this.options.editable) return;
+        
+        const groupSelector = this.dialogElement.querySelector('#group-selector');
+        const targetSelector = this.dialogElement.querySelector('#group-target');
+        const applyBtn = this.dialogElement.querySelector('#apply-group-classification');
+        
+        if (!groupSelector || !targetSelector || !applyBtn) {
+            console.error('Group mode elements not found');
+            return;
+        }
+        
+        groupSelector.addEventListener('change', async (e) => {
+            const groupId = e.target.value;
+            console.log('Group selected:', groupId);
+            if (groupId) {
+                await this.loadGroupItems(groupId);
+                targetSelector.disabled = false;
+                console.log('Group items loaded:', this.selectedGroupItems);
+            } else {
+                this.clearGroupItems();
+                targetSelector.disabled = true;
+                targetSelector.value = '';
+                applyBtn.disabled = true;
+            }
+        });
+        
+        targetSelector.addEventListener('change', (e) => {
+            const hasGroup = groupSelector.value;
+            const hasTarget = e.target.value;
+            applyBtn.disabled = !hasGroup || !hasTarget;
+            console.log('Target changed. Has group:', hasGroup, 'Has target:', hasTarget);
+        });
+        
+        applyBtn.addEventListener('click', () => {
+            const groupId = groupSelector.value;
+            const targetCategory = targetSelector.value;
+            console.log('Apply button clicked. Group:', groupId, 'Target:', targetCategory);
+            if (groupId && targetCategory) {
+                this.applyGroupClassification(groupId, targetCategory);
+            }
+        });
+
+        // Add search functionality for group mode
+        const globalSearch = this.dialogElement.querySelector('.oc-search-input');
+        if (globalSearch) {
+            globalSearch.addEventListener('input', (e) => {
+                this.performGlobalSearch(e.target.value);
+            });
+            
+            const clearBtn = this.dialogElement.querySelector('.oc-search-clear');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', () => {
+                    globalSearch.value = '';
+                    this.performGlobalSearch('');
+                });
+            }
+        }
+
+        this.dialogElement.addEventListener('click', (e) => {
+            if (e.target.classList.contains('oc-item-btn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                const targetCategory = e.target.dataset.target;
+                const itemId = e.target.dataset.itemId;
+                this.moveItemTo(itemId, targetCategory);
+            }
+        });
+        
+        this.dialogElement.addEventListener('click', (e) => {
+            if (e.target.closest('.oc-nav-btn')) {
+                const btn = e.target.closest('.oc-nav-btn');
+                const fromCategory = btn.dataset.from;
+                const toCategory = btn.dataset.to;
+                this.moveVisibleItems(fromCategory, toCategory);
+            }
+        });
+        
+        this.updateCounters();
+    }
+    
+    handleKeydown(e) {
+        if (e.key === 'Escape' && this.isOpen) {
+            this.close(false);
+        }
+    }
+    
+    updateItemToolbar(itemElement, newCategory) {
+        const buttons = itemElement.querySelectorAll('.oc-item-btn');
+        buttons.forEach(btn => {
+            btn.classList.toggle('pressed', btn.dataset.target === newCategory);
+        });
+    }
+    
+    moveItemTo(itemId, targetCategory, showFeedback = true) {
+        if (!this.options.editable) return;
+        
+        const item = this.dialogElement.querySelector(`[data-item-id="${itemId}"]`);
+        const targetList = this.dialogElement.querySelector(`[data-category="${targetCategory}"]`);
+        
+        if (item && targetList && item.dataset.category !== targetCategory) {
+            item.dataset.category = targetCategory;
+            this.updateItemToolbar(item, targetCategory);
+            targetList.appendChild(item);
+            this.updateCounters();
+            
+            if (showFeedback) {
+                item.style.transform = 'scale(1.05)';
+                setTimeout(() => {
+                    item.style.transform = '';
+                }, 200);
+                
+                console.log(`Item ${itemId} moved to ${targetCategory} via button`);
+            }
+        }
+    }
+    
+    moveVisibleItems(fromCategory, toCategory) {
+        if (!this.options.editable) return;
+        
+        const fromList = this.dialogElement.querySelector(`.oc-items-list[data-category="${fromCategory}"]`);
+        const toList = this.dialogElement.querySelector(`.oc-items-list[data-category="${toCategory}"]`);
+        
+        if (!fromList || !toList) return;
+        
+        const visibleItems = fromList.querySelectorAll('.oc-item:not([style*="display: none"])');
+        
+        visibleItems.forEach(item => {
+            item.dataset.category = toCategory;
+            this.updateItemToolbar(item, toCategory);
+            toList.appendChild(item);
+        });
+        
+        this.updateCounters();
+        
+        console.log(`Moved ${visibleItems.length} visible items from ${fromCategory} to ${toCategory}`);
+    }
+    
+    setupClassificationManager() {
+        if (!this.options.editable) return;
+        
+        const loadSelect = this.dialogElement.querySelector('#load-classification');
+        const descriptionDiv = this.dialogElement.querySelector('#classification-description');
+        const applyBtn = this.dialogElement.querySelector('#apply-classification');
+        
+        if (!loadSelect || !descriptionDiv || !applyBtn) return;
+        
+        loadSelect.addEventListener('change', (e) => {
+            const selectedOption = e.target.selectedOptions[0];
+            if (selectedOption && selectedOption.value) {
+                const description = selectedOption.dataset.description || 'No description available';
+                descriptionDiv.textContent = description;
+                applyBtn.disabled = false;
+            } else {
+                descriptionDiv.textContent = 'Select a classification to see its description';
+                applyBtn.disabled = true;
+            }
+        });
+        
+        const saveBtn = this.dialogElement.querySelector('#save-classification');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                this.saveClassification();
+            });
+        }
+        
+        applyBtn.addEventListener('click', () => {
+            const selectedId = loadSelect.value;
+            if (selectedId) {
+                this.applyClassification(selectedId);
+            }
+        });
+    }
+    
+    async saveClassification() {
+        if (!this.options.editable) return;
+        
+        const nameInput = this.dialogElement.querySelector('#save-name');
+        const descriptionInput = this.dialogElement.querySelector('#save-description');
+        
+        const name = nameInput.value.trim();
+        const description = descriptionInput.value.trim();
+        
+        if (!name) {
+            alert('Please enter a name for the classification');
+            return;
+        }
+        
+        const currentClassification = this.getValue();
+        
+        const saveData = {
+            name: name,
+            description: description,
+            classification: currentClassification,
+            categories: this.categories,
+            timestamp: new Date().toISOString(),
+            totalItems: this.items.length
+        };
+        
+        console.log('Saving classification to API:', saveData);
+        
+        try {
+            setTimeout(() => {
+                alert(`Classification "${name}" saved successfully!`);
+                nameInput.value = '';
+                descriptionInput.value = '';
+                
+                this.options.savedClassifications.push({
+                    id: Date.now().toString(),
+                    name: name,
+                    description: description,
+                    classification: currentClassification
+                });
+                
+                this.refreshLoadDropdown();
+            }, 500);
+            
+        } catch (error) {
+            console.error('Error saving classification:', error);
+            alert('Error saving classification. Please try again.');
+        }
+    }
+    
+    async applyClassification(classificationId) {
+        if (!this.options.editable) return;
+        
+        const savedClassification = this.options.savedClassifications.find(c => c.id === classificationId);
+        
+        if (!savedClassification) {
+            alert('Classification not found');
+            return;
+        }
+        
+        console.log('Applying classification:', savedClassification);
+        
+        const currentItemIds = new Set(this.items.map(item => item[this.options.valueId].toString()));
+        
+        Object.entries(savedClassification.classification).forEach(([categoryId, itemIds]) => {
+            itemIds.forEach(itemId => {
+                if (currentItemIds.has(itemId.toString())) {
+                    this.moveItemTo(itemId, categoryId, false);
+                }
+            });
+        });
+        
+        this.updateCounters();
+    }
+    
+    refreshLoadDropdown() {
+        const loadSelect = this.dialogElement.querySelector('#load-classification');
+        if (loadSelect) {
+            const savedOptions = this.options.savedClassifications.map(classification => 
+                `<option value="${classification.id}" data-description="${classification.description}">${classification.name}</option>`
+            ).join('');
+            
+            loadSelect.innerHTML = `
+                <option value="">Select a saved classification...</option>
+                ${savedOptions}
+            `;
+        }
+    }
+    
+    async loadGroupItems(groupId) {
+        console.log(`Loading items for group: ${groupId}`);
+        
+        try {
+            const mockGroupItems = this.getMockGroupItems(groupId);
+            this.selectedGroupItems = mockGroupItems;
+            console.log('Loaded group items:', this.selectedGroupItems);
+        } catch (error) {
+            console.error('Error loading group items:', error);
+            this.selectedGroupItems = [];
+        }
+    }
+    
+    getMockGroupItems(groupId) {
+        const groupData = {
+            'admin': [
+                {id: 3, name: "Alice Johnson", category: "write"},
+                {id: 6, name: "Diana Prince", category: "write"}
+            ],
+            'users': [
+                {id: 1, name: "John Doe", category: "none"},
+                {id: 2, name: "Jane Smith", category: "read"},
+                {id: 4, name: "Bob Williams", category: "none"},
+                {id: 5, name: "Charlie Brown", category: "read"}
+            ],
+            'managers': [
+                {id: 2, name: "Jane Smith", category: "read"},
+                {id: 7, name: "Edward Norton", category: "none"},
+                {id: 8, name: "Fiona Apple", category: "read"}
+            ]
+        };
+        
+        return groupData[groupId] || [];
+    }
+    
+    clearGroupItems() {
+        this.selectedGroupItems = [];
+    }
+    
+    applyGroupClassification(groupId, targetCategory) {
+        if (!this.options.editable) return;
+        
+        if (!this.selectedGroupItems.length) {
+            alert('No items in selected group');
+            return;
+        }
+        
+        console.log(`Applying classification ${targetCategory} to group ${groupId}`);
+        console.log('Selected group items:', this.selectedGroupItems);
+        
+        let movedCount = 0;
+        this.selectedGroupItems.forEach(item => {
+            const originalItem = this.items.find(i => i[this.options.valueId] == item.id);
+            if (originalItem) {
+                console.log(`Moving item ${item.id} from ${originalItem[this.options.valueColumnKey]} to ${targetCategory}`);
+                originalItem[this.options.valueColumnKey] = targetCategory;
+                this.moveItemTo(item.id, targetCategory, false);
+                movedCount++;
+            }
+        });
+        
+        if (movedCount > 0) {
+            this.updateCounters();
+        } else {
+            alert('No items were found to update');
+        }
+        
+        const groupSelector = this.dialogElement.querySelector('#group-selector');
+        const targetSelector = this.dialogElement.querySelector('#group-target');
+        const applyBtn = this.dialogElement.querySelector('#apply-group-classification');
+        
+        if (groupSelector) groupSelector.value = '';
+        if (targetSelector) {
+            targetSelector.value = '';
+            targetSelector.disabled = true;
+        }
+        if (applyBtn) applyBtn.disabled = true;
+        
+        this.clearGroupItems();
+    }
+    
+    performGlobalSearch(searchTerm) {
+        const items = this.dialogElement.querySelectorAll('.oc-item');
+        const normalizedSearch = searchTerm.toLowerCase().trim();
+        
+        items.forEach(item => {
+            const label = item.querySelector('.oc-item-label').textContent.toLowerCase();
+            const matches = !normalizedSearch || label.includes(normalizedSearch);
+            item.style.display = matches ? 'flex' : 'none';
+        });
+        
+        this.updateCounters();
+    }
+    
+    updateCounters() {
+        if (this.currentMode === 'individual' || this.currentMode === 'group') {
+            this.updateIndividualCounters();
+        }
+    }
+    
+    updateIndividualCounters() {
+        this.categories.forEach(category => {
+            const list = this.dialogElement.querySelector(`.oc-items-list[data-category="${category.id}"]`);
+            const counter = this.dialogElement.querySelector(`.oc-counter[data-category="${category.id}"] .count`);
+            
+            if (list && counter) {
+                const allItems = list.querySelectorAll('.oc-item');
+                const visibleItems = Array.from(allItems).filter(item => 
+                    item.style.display !== 'none'
+                );
+                
+                counter.textContent = visibleItems.length;
+            }
+        });
+        
+        const totalCounter = this.dialogElement.querySelector('#total-count');
+        if (totalCounter) {
+            const allVisibleItems = this.dialogElement.querySelectorAll('.oc-item:not([style*="display: none"])');
+            totalCounter.textContent = allVisibleItems.length;
+        }
+    }
+    
+    updateGroupCounters() {
+        this.categories.forEach(category => {
+            const counter = this.dialogElement.querySelector(`.oc-group-counter[data-category="${category.id}"] .count`);
+            
+            if (counter) {
+                const itemCount = this.items.filter(item => {
+                    const itemCategory = item[this.options.valueColumnKey] || this.categories[0].id;
+                    return itemCategory === category.id;
+                }).length;
+                
+                counter.textContent = itemCount;
+            }
+        });
+    }
+    
+    getValue() {
+        const result = {};
+        
+        this.categories.forEach(category => {
+            result[category.id] = [];
+        });
+        
+        if (this.currentMode === 'individual' && this.dialogElement) {
+            const items = this.dialogElement.querySelectorAll('.oc-item');
+            items.forEach(item => {
+                const itemId = item.dataset.itemId;
+                const category = item.dataset.category;
+                if (result[category]) {
+                    result[category].push(itemId);
+                }
+            });
+        } else {
+            this.items.forEach(item => {
+                const itemId = item[this.options.valueId];
+                const category = item[this.options.valueColumnKey] || this.categories[0].id;
+                if (result[category]) {
+                    result[category].push(itemId);
+                }
+            });
+        }
+        
+        return result;
+    }
+    
+    close(save = false) {
+        document.removeEventListener('keydown', this.handleKeydown.bind(this));
+        
+        if (save && this.options.editable) {
+            const result = this.getValue();
+            this.resolve(result);
+        } else {
+            this.reject(new Error('User cancelled'));
+        }
+        
+        this.sortableInstances.forEach(sortable => {
+            sortable.destroy();
+        });
+        this.sortableInstances = [];
+        
+        if (this.dialogElement) {
+            this.dialogElement.remove();
+            this.dialogElement = null;
+        }
+        
+        this.isOpen = false;
+    }
+}
