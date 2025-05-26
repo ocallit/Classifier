@@ -1227,7 +1227,7 @@ class ocClasificame {
         // Close button in footer
         const footerCloseButton = dialogElement.querySelector('.oc-dialog-footer button[data-action="close-crud"]');
         if (footerCloseButton) {
-            footerCloseButton.addEventListener('click', ()_=> {
+            footerCloseButton.addEventListener('click', () => { // Fixed syntax error
                 dialogElement.close();
             });
         }
@@ -1235,7 +1235,7 @@ class ocClasificame {
         // Close button in header
         const headerCloseButton = dialogElement.querySelector('.oc-dialog-header .oc-dialog-close-crud');
         if (headerCloseButton) {
-            headerCloseButton.addEventListener('click', ()_=> {
+            headerCloseButton.addEventListener('click', () => { // Fixed syntax error
                 dialogElement.close();
             });
         }
