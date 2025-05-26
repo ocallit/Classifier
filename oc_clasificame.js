@@ -44,8 +44,9 @@ class ocClasificame {
         } else if (!this.options.showIndividualMethod && this.options.showGroupMethod) {
             return 'group';
         } else if (this.options.showIndividualMethod && this.options.showGroupMethod) {
-            return 'individual';
+            return 'both'; // Return 'both' when both options are true
         } else {
+            // Fallback: if neither is explicitly true, default to individual
             return 'individual';
         }
     }
@@ -55,10 +56,35 @@ class ocClasificame {
             this.currentValues[cat.id] = [];
         });
         
+        // Ensure categories array is not empty before trying to access its first element
+        if (this.categories.length === 0) {
+            console.error("ocClasificame: No categories defined. Cannot initialize values.");
+            return; // Cannot proceed without categories
+        }
+        const defaultCategoryId = this.categories[0].id; // Define default category ID once
+
         this.items.forEach(item => {
-            const categoryId = item[this.options.valueColumnKey] || this.categories[0].id;
-            if (this.currentValues[categoryId]) {
-                this.currentValues[categoryId].push(item[this.options.valueId]);
+            let assignedCategoryId = item[this.options.valueColumnKey];
+            
+            // Check if the item's category is missing, null, undefined, 
+            // or not a valid initialized category ID.
+            if (!assignedCategoryId || !this.currentValues.hasOwnProperty(assignedCategoryId)) {
+                item[this.options.valueColumnKey] = defaultCategoryId; // Update the item's actual category property
+                assignedCategoryId = defaultCategoryId; // Use the default category for pushing
+            }
+            
+            // At this point, assignedCategoryId should be a valid key in this.currentValues.
+            // The direct push is generally safe, but a hasOwnProperty check is more robust.
+            if (this.currentValues.hasOwnProperty(assignedCategoryId)) {
+                 this.currentValues[assignedCategoryId].push(item[this.options.valueId]);
+            } else {
+                // This fallback should theoretically not be reached if categories are defined
+                // and defaultCategoryId is derived from them.
+                // It implies an issue with defaultCategoryId or the initialization of currentValues.
+                console.warn(`Item ${item[this.options.valueId]} could not be assigned to category '${assignedCategoryId}' or default '${defaultCategoryId}'. This may indicate an issue with category definitions.`);
+                // As a last resort, if even defaultCategoryId is problematic, this item might not be added,
+                // or you might consider a "limbo" category if that makes sense for the application.
+                // For now, we'll log the warning. If defaultCategoryId is always valid, this else is defensive.
             }
         });
     }
@@ -149,6 +175,7 @@ class ocClasificame {
                     <div class="oc-counter" data-category="${category.id}">
                         <span class="count">0</span> items
                     </div>
+                    ${this.options.editable ? `<button class="oc-sort-btn" data-sort-category="${category.id}" title="Sort items A-Z"><i class="fas fa-sort-alpha-down"></i> Sort</button>` : ''}
                     ${!isLast ? `<button class="oc-nav-btn" data-action="move-right" data-from="${category.id}" data-to="${rightCategory.id}">
                         ${rightCategory.label} <i class="fas fa-arrow-right"></i>
                     </button>` : '<span></span>'}
@@ -158,6 +185,7 @@ class ocClasificame {
                     <div class="oc-counter" data-category="${category.id}">
                         <span class="count">0</span> items
                     </div>
+                    ${/* No sort button in read-only mode here either, matching above logic */ ''}
                 </div>
             `;
             
@@ -244,6 +272,7 @@ class ocClasificame {
                     <div class="oc-counter" data-category="${category.id}">
                         <span class="count">0</span> items
                     </div>
+                    ${this.options.editable ? `<button class="oc-sort-btn" data-sort-category="${category.id}" title="Sort items A-Z"><i class="fas fa-sort-alpha-down"></i> Sort</button>` : ''}
                     ${!isLast ? `<button class="oc-nav-btn" data-action="move-right" data-from="${category.id}" data-to="${rightCategory.id}">
                         ${rightCategory.label} <i class="fas fa-arrow-right"></i>
                     </button>` : '<span></span>'}
@@ -463,6 +492,20 @@ class ocClasificame {
                 this.close(false);
             }
         });
+
+        // Centralized sort button listener
+        if (this.options.editable) {
+            this.dialogElement.addEventListener('click', (e) => {
+                const sortButton = e.target.closest('.oc-sort-btn');
+                if (sortButton) {
+                    e.preventDefault();
+                    const categoryId = sortButton.dataset.sortCategory;
+                    if (categoryId) {
+                        this.sortItemsInCategory(categoryId);
+                    }
+                }
+            });
+        }
     }
     
     setupIndividualModeListeners() {
@@ -505,6 +548,7 @@ class ocClasificame {
         if (this.options.canSaveIndividualMethod || this.options.savedClassifications.length > 0) {
             this.setupClassificationManager();
         }
+        // Removed duplicate sort button listener from here
     }
     
     setupGroupModeListeners() {
@@ -586,6 +630,7 @@ class ocClasificame {
         });
         
         this.updateCounters();
+        // Removed duplicate sort button listener from here
     }
     
     handleKeydown(e) {
@@ -912,22 +957,32 @@ class ocClasificame {
         this.categories.forEach(category => {
             result[category.id] = [];
         });
-        
-        if (this.currentMode === 'individual' && this.dialogElement) {
+
+        // If dialog is present and mode is one where items are displayed in sortable lists
+        if (this.dialogElement && (this.currentMode === 'individual' || this.currentMode === 'group' || this.currentMode === 'both')) {
             const items = this.dialogElement.querySelectorAll('.oc-item');
             items.forEach(item => {
                 const itemId = item.dataset.itemId;
-                const category = item.dataset.category;
-                if (result[category]) {
+                const category = item.dataset.category; // This reflects current UI state
+                if (result.hasOwnProperty(category)) { // Check if category key exists
                     result[category].push(itemId);
+                } else {
+                    // This case should ideally not happen if categories in data-category are always valid
+                    console.warn(`Item ${itemId} found in DOM with unrecognized category '${category}'`);
                 }
             });
         } else {
+            // Fallback or for modes where UI doesn't directly represent the categories (e.g. if 'both' had a different structure)
+            // Or, if this component is used non-interactively to just get initial distribution
             this.items.forEach(item => {
                 const itemId = item[this.options.valueId];
-                const category = item[this.options.valueColumnKey] || this.categories[0].id;
-                if (result[category]) {
+                // Ensure item[this.options.valueColumnKey] is up-to-date from initializeValues()
+                const category = item[this.options.valueColumnKey]; 
+                if (result.hasOwnProperty(category)) { // Check if category key exists
                     result[category].push(itemId);
+                } else {
+                     // If categories are pre-initialized into result, this means an item's category is not in the list.
+                    console.warn(`Item ${itemId} has category '${category}' not present in initial category list for result object.`);
                 }
             });
         }
@@ -956,5 +1011,40 @@ class ocClasificame {
         }
         
         this.isOpen = false;
+    }
+
+    sortItemsInCategory(categoryId) {
+        if (!this.options.editable || !this.dialogElement) return;
+
+        const itemList = this.dialogElement.querySelector(`.oc-items-list[data-category="${categoryId}"]`);
+        if (!itemList) {
+            console.warn(`Sort: Item list not found for category ${categoryId}`);
+            return;
+        }
+
+        const items = Array.from(itemList.querySelectorAll('.oc-item'));
+
+        const itemsData = items.map(itemElement => {
+            const labelElement = itemElement.querySelector('.oc-item-label');
+            return {
+                id: itemElement.dataset.itemId,
+                label: labelElement ? labelElement.textContent.trim() : '',
+                element: itemElement
+            };
+        });
+
+        itemsData.sort((a, b) => {
+            return a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' });
+        });
+
+        // Clear current items (visually, not from data model yet)
+        // itemList.innerHTML = ''; // This would destroy event listeners on items if any were direct
+
+        // Re-append sorted items
+        itemsData.forEach(itemData => {
+            itemList.appendChild(itemData.element);
+        });
+
+        console.log(`Sorted items in category ${categoryId}`);
     }
 }

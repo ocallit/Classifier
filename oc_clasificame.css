@@ -117,12 +117,12 @@ body {
     height: 100%;
     display: flex;
     flex-direction: column;
-    padding: 20px;
+    padding: 12px; /* Reduced padding */
     overflow: hidden;
 }
 
 .oc-search-stats-row {
-    margin-bottom: 20px;
+    margin-bottom: 12px; /* Reduced margin */
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -144,6 +144,7 @@ body {
     font-size: 14px;
     width: 300px;
     transition: border-color 0.2s;
+    max-width: 100%; /* Added */
 }
 
 .oc-search-input:focus {
@@ -180,7 +181,7 @@ body {
 
 .oc-columns {
     display: flex;
-    gap: 20px;
+    gap: 12px; /* Reduced gap */
     flex: 1;
     overflow: hidden;
     flex-wrap: wrap;
@@ -198,7 +199,7 @@ body {
 }
 
 .oc-column-header {
-    padding: 16px;
+    padding: 10px 16px 4px; /* Further reduced bottom padding */
     background: linear-gradient(135deg, #e9e9e9 0%, #f0f0f0 100%);
     border-bottom: 2px solid #ddd;
     text-align: center;
@@ -245,8 +246,8 @@ body {
     background: linear-gradient(0deg, rgba(233,216,191,1) 0%, rgba(246,243,220,1) 56%);
     border: 1px solid rgb(215, 201, 81);
     border-radius: 6px;
-    margin-bottom: 8px;
-    padding: 12px;
+    margin-bottom: 6px; /* Reduced margin */
+    padding: 8px 10px; /* Reduced padding */
     cursor: grab;
     transition: all 0.2s;
     display: flex;
@@ -355,11 +356,13 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 12px;
+    padding: 4px 12px; /* Reduced vertical padding */
     background: #f8f9fa;
     border-top: 1px solid #e0e0e0;
     flex-wrap: wrap;
     gap: 8px;
+    /* Ensure items are vertically centered if wrapping occurs or heights differ */
+    align-items: center; 
 }
 
 .oc-nav-btn {
@@ -390,11 +393,42 @@ body {
     display: none;
 }
 
+/* Sort Button Styles */
+.oc-sort-btn {
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 4px 8px; /* Slightly more padding for easier click */
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    color: #333;
+    margin: 0 4px; /* Add some horizontal margin */
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.oc-sort-btn i.fas { /* Style for Font Awesome icon if used */
+    font-size: 10px; /* Adjust icon size */
+}
+
+.oc-sort-btn:hover {
+    background: #e0e0e0;
+    border-color: #bbb;
+}
+
+.oc-readonly .oc-sort-btn {
+    display: none !important; /* Ensure it's hidden in read-only */
+}
+
 .oc-counter {
     text-align: center;
     font-size: 12px;
     font-weight: 600;
     color: #666;
+    min-height: 28px; /* Ensure a minimum height for consistency, especially if no nav buttons */
 }
 
 .oc-classification-manager {
