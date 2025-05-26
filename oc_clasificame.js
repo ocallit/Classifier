@@ -38,6 +38,7 @@ class ocClasificame {
         this.groupCrudSortables = [];
         this.isGroupCrudDialogInitialized = false;
         this.groupItemsCache = {}; // Initialize cache for group items
+        this.isClosingProgrammatically = false; // Flag for native dialog close handling
 
         // Pre-populate cache for existing groups for simulation
         // This assumes this.options.groups is already populated (e.g., from options passed to constructor)
@@ -198,7 +199,22 @@ class ocClasificame {
             this.updateCounters();
             
             this.isOpen = true;
-            this.dialogElement.classList.add('open');
+            // this.dialogElement.classList.add('open'); // Replaced by showModal()
+
+            if (this.dialogElement.tagName === 'DIALOG') {
+                this.dialogElement.showModal();
+                // Add a 'close' event listener to handle native dialog close (e.g., Escape key)
+                this.dialogElement.addEventListener('close', () => {
+                    if (!this.isClosingProgrammatically) {
+                        // If the dialog was closed by native means (e.g., Escape key),
+                        // we need to ensure our internal state and cleanup are handled.
+                        this.close(false); // Assume cancel if closed natively without save action
+                    }
+                });
+            } else {
+                // Fallback for non-dialog elements or if migration is partial
+                this.dialogElement.classList.add('open');
+            }
         });
     }
     
@@ -212,7 +228,7 @@ class ocClasificame {
         const opts = { ...defaultOptions, ...dialogOptions };
         
         // Modify footer buttons based on editable state
-        let footerButtonsHTML = this.options.editable 
+        const footerButtonsHTML = this.options.editable 
             ? `<button class="oc-btn oc-btn-secondary" data-action="cancel">Cancel</button>
                <button class="oc-btn oc-btn-primary" data-action="save">Save</button>`
             : `<button class="oc-btn oc-btn-primary" data-action="close">Close</button>`;
@@ -223,7 +239,7 @@ class ocClasificame {
             footerButtonsHTML = manageGroupsBtnHTML + footerButtonsHTML;
         }
 
-        this.dialogElement = document.createElement('div');
+        this.dialogElement = document.createElement('dialog'); // Changed from 'div'
         this.dialogElement.className = 'oc-dialog';
         
         // Add read-only class if not editable
@@ -586,11 +602,29 @@ class ocClasificame {
         
         document.addEventListener('keydown', this.handleKeydown.bind(this));
         
-        this.dialogElement.addEventListener('click', (e) => {
-            if (e.target === this.dialogElement) {
-                this.close(false);
-            }
-        });
+        // Click-outside-to-close for native <dialog>
+        if (this.dialogElement.tagName === 'DIALOG') {
+            this.dialogElement.addEventListener('click', (event) => {
+                if (event.target === this.dialogElement) { // Ensures the click is on the dialog element itself
+                    const rect = this.dialogElement.getBoundingClientRect();
+                    // Check if the click coordinates are outside the dialog's visual bounds
+                    const isInDialog = (
+                        rect.top <= event.clientY && event.clientY <= rect.top + rect.height &&
+                        rect.left <= event.clientX && event.clientX <= rect.left + rect.width
+                    );
+                    if (!isInDialog) {
+                        this.close(false); // Click was on the backdrop
+                    }
+                }
+            });
+        } else {
+            // Fallback for the old div-based dialog (if ever reverted or for other components)
+            this.dialogElement.addEventListener('click', (e) => {
+                if (e.target === this.dialogElement) {
+                    this.close(false);
+                }
+            });
+        }
 
         // Centralized sort button listener
         if (this.options.editable) { // Sort is an edit operation
@@ -737,9 +771,12 @@ class ocClasificame {
     }
     
     handleKeydown(e) {
-        if (e.key === 'Escape' && this.isOpen) {
-            this.close(false);
-        }
+        // Removed 'Escape' key handling for the main dialog,
+        // as the native <dialog> element's 'close' event (handled in open())
+        // will now trigger the necessary cleanup via this.close(false).
+        // if (e.key === 'Escape' && this.isOpen) {
+        //     this.close(false);
+        // }
     }
     
     updateItemToolbar(itemElement, newCategory) {
@@ -1096,6 +1133,8 @@ class ocClasificame {
     close(save = false) {
         document.removeEventListener('keydown', this.handleKeydown.bind(this));
         
+        this.isClosingProgrammatically = true; // Set flag
+
         if (save && this.options.editable) {
             const result = this.getValue();
             this.resolve(result);
@@ -1109,11 +1148,15 @@ class ocClasificame {
         this.sortableInstances = [];
         
         if (this.dialogElement) {
-            this.dialogElement.remove();
+            if (this.dialogElement.tagName === 'DIALOG' && this.dialogElement.open) {
+                this.dialogElement.close(); // Native dialog close
+            }
+            this.dialogElement.remove(); // Remove from DOM
             this.dialogElement = null;
         }
         
         this.isOpen = false;
+        this.isClosingProgrammatically = false; // Reset flag
     }
 
     sortItemsInCategory(categoryId) {
