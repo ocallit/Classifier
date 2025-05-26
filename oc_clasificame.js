@@ -13,6 +13,7 @@ class ocClasificame {
             showIndividualMethod: true,
             canSaveIndividualMethod: false,
             showGroupMethod: false,
+            crudGroupMethod: false,
             groups: [],
             apiEndpoints: {
                 save: '/api/classifications/save', // For main classifications
@@ -632,35 +633,32 @@ class ocClasificame {
             if (manageGroupsBtn) {
                 manageGroupsBtn.addEventListener('click', () => {
                     const groupManagementCategories = [
-                        { id: 'available_groups', label: 'AG', title: 'Available Base Groups' },
-                        { id: 'selected_groups', label: 'SG', title: 'Selected Groups for Composite' }
+                        { id: 'available_groups', label: 'Disponible', title: 'Disponibles' },
+                        { id: 'selected_groups', label: 'En Grupo', title: 'En el grupo' }
                     ];
-
-                    // For now, creating a new composite group, so selectedBaseGroupIds is empty
-                    const groupMgmtItems = this._prepareBaseGroupsAsItemsForCompositeManagement(this.options.groups);
 
                     const childInstanceOptions = {
                         title: 'Create Composite Group',
                         editable: true,
-                        showToolbar: false, 
+                        showToolbar: true,
+                        showIndividualMethod: false,
+                        canSaveIndividualMethod: false,
+                        showGroupMethod: true,
                         crudGroupMethod: false, // CRITICAL: Prevent recursion
-                        showIndividualMethod: true, 
-                        showGroupMethod: false, 
-                        canSaveIndividualMethod: false, 
                         valueId: 'id',
                         valueDisplay: 'name',
                         valueColumnKey: 'category',
                         // dialogClass: 'oc-child-clasificame-dialog' // Optional: for different styling
                     };
 
-                    const groupMgmtInstance = new ocClasificame(groupManagementCategories, groupMgmtItems, childInstanceOptions);
+                    const groupMgmtInstance = new ocClasificame(groupManagementCategories, this.items, childInstanceOptions);
                     
-                    const compositeGroupName = prompt("Enter name for the new composite group:");
+                    const compositeGroupName = prompt("Nombre del grupo:");
                     if (!compositeGroupName || compositeGroupName.trim() === '') {
-                        alert("Composite group name cannot be empty.");
+                        alert("Nombre es requerido");
                         return; 
                     }
-                    const compositeGroupDescription = prompt("Enter description for the new composite group (optional):") || "";
+                    const compositeGroupDescription = prompt("Descripción (opciona):") || "";
 
                     groupMgmtInstance.open({ title: `Define Composite Group: ${compositeGroupName}` }) // Pass dynamic title
                         .then(result => {
