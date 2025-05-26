@@ -593,7 +593,7 @@ class ocClasificame {
         });
 
         // Centralized sort button listener
-        if (this.options.editable) {
+        if (this.options.editable) { // Sort is an edit operation
             this.dialogElement.addEventListener('click', (e) => {
                 const sortButton = e.target.closest('.oc-sort-btn');
                 if (sortButton) {
@@ -606,7 +606,7 @@ class ocClasificame {
             });
         }
 
-        if (this.options.crudGroupMethod && this.options.editable) {
+        if (this.options.crudGroupMethod && this.options.editable) { // Manage Groups is an edit operation
             const manageGroupsBtn = this.dialogElement.querySelector('#oc-manage-groups-btn');
             if (manageGroupsBtn) {
                 manageGroupsBtn.addEventListener('click', () => {
@@ -614,25 +614,32 @@ class ocClasificame {
                 });
             }
         }
+
+        // Setup search listeners regardless of edit mode, as search is a read-only action
+        this._setupSearchEventListeners();
     }
-    
-    setupIndividualModeListeners() {
-        if (!this.options.editable) return;
-        
-        const globalSearch = this.dialogElement.querySelector('.oc-search-input');
-        if (globalSearch) {
-            globalSearch.addEventListener('input', (e) => {
+
+    _setupSearchEventListeners() {
+        const globalSearchInput = this.dialogElement.querySelector('.oc-search-input');
+        if (globalSearchInput) {
+            globalSearchInput.addEventListener('input', (e) => {
                 this.performGlobalSearch(e.target.value);
             });
-            
-            const clearBtn = this.dialogElement.querySelector('.oc-search-clear');
-            if (clearBtn) {
-                clearBtn.addEventListener('click', () => {
-                    globalSearch.value = '';
+
+            const clearSearchBtn = this.dialogElement.querySelector('.oc-search-clear');
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener('click', () => {
+                    globalSearchInput.value = '';
                     this.performGlobalSearch('');
                 });
             }
         }
+    }
+    
+    setupIndividualModeListeners() {
+        if (!this.options.editable) return; // Keep this guard for other editable actions
+        
+        // Search listeners moved to _setupSearchEventListeners / setupEventListeners
         
         this.dialogElement.addEventListener('click', (e) => {
             if (e.target.classList.contains('oc-item-btn')) {
@@ -660,7 +667,9 @@ class ocClasificame {
     }
     
     setupGroupModeListeners() {
-        if (!this.options.editable) return;
+        if (!this.options.editable) return; // Keep this guard for other editable actions
+        
+        // Search listeners moved to _setupSearchEventListeners / setupEventListeners
         
         const groupSelector = this.dialogElement.querySelector('#group-selector');
         const targetSelector = this.dialogElement.querySelector('#group-target');
@@ -702,21 +711,7 @@ class ocClasificame {
             }
         });
 
-        // Add search functionality for group mode
-        const globalSearch = this.dialogElement.querySelector('.oc-search-input');
-        if (globalSearch) {
-            globalSearch.addEventListener('input', (e) => {
-                this.performGlobalSearch(e.target.value);
-            });
-            
-            const clearBtn = this.dialogElement.querySelector('.oc-search-clear');
-            if (clearBtn) {
-                clearBtn.addEventListener('click', () => {
-                    globalSearch.value = '';
-                    this.performGlobalSearch('');
-                });
-            }
-        }
+        // Search listeners moved to _setupSearchEventListeners / setupEventListeners
 
         this.dialogElement.addEventListener('click', (e) => {
             if (e.target.classList.contains('oc-item-btn')) {

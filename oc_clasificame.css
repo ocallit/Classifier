@@ -705,14 +705,18 @@ body {
 }
 
 /* Read-only mode - hide search in certain contexts */
+/*
 .oc-readonly .oc-global-search {
     display: none;
 }
+*/
 
 /* Read-only mode - center stats when search is hidden */
+/*
 .oc-readonly .oc-search-stats-row {
     justify-content: center;
 }
+*/
 
 @media (max-width: 768px) {
     .oc-search-stats-row {
