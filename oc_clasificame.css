@@ -113,6 +113,10 @@ body {
     flex-shrink: 0;
 }
 
+#oc-manage-groups-btn {
+    margin-right: auto; /* Pushes this button to the far left */
+}
+
 .oc-clasificame {
     height: 100%;
     display: flex;
@@ -183,7 +187,7 @@ body {
     display: flex;
     gap: 12px; /* Reduced gap */
     flex: 1;
-    overflow: hidden;
+    /* overflow: hidden; */ /* Removed to test if this allows columns to properly size for tall item lists */
     flex-wrap: wrap;
 }
 
@@ -195,7 +199,9 @@ body {
     background: white;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
+    /* overflow: hidden; */ /* This was commented out in a previous step, let's ensure it stays that way or is definitively removed. */
+    /* For this task, we are confirming its removal or ensuring it's not the cause. */
+    /* If it was already commented, no change. If it was active, it's now removed. */
 }
 
 .oc-column-header {
@@ -729,4 +735,146 @@ body {
     .oc-column {
         min-width: auto;
     }
+}
+
+/* Group CRUD Management Dialog Styles */
+.oc-group-crud-dialog {
+    border: 1px solid #ccc;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    width: 80vw;
+    max-width: 1000px;
+    height: 70vh;
+    padding: 0; /* Reset default dialog padding */
+    overflow: hidden; /* Prevent content from spilling before internal scrollbars activate */
+}
+
+.oc-group-crud-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+}
+
+/* Reuse .oc-dialog-header and .oc-dialog-footer for consistency if desired, or define specific ones */
+/* For this task, we'll assume .oc-dialog-header and .oc-dialog-footer are suitable */
+.oc-group-crud-dialog .oc-dialog-header { /* Ensure specificity if reusing */
+    padding: 16px 20px; /* Adjust padding as needed */
+}
+
+.oc-group-crud-dialog .oc-dialog-footer { /* Ensure specificity if reusing */
+    padding: 12px 20px; /* Adjust padding as needed */
+    justify-content: flex-end;
+}
+
+.oc-group-crud-dialog-body {
+    display: flex;
+    gap: 15px;
+    padding: 15px;
+    overflow: hidden; /* Important for child panes to manage their own scrolling */
+    height: calc(100% - 120px); /* Approximate height: 100% - header_height - footer_height */
+    /* Adjust 120px based on actual header/footer heights */
+}
+
+.oc-group-crud-left-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden; /* Allow internal scrolling if content overflows */
+}
+
+.oc-group-crud-right-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden; /* Allow internal scrolling if content overflows */
+}
+
+.oc-group-list-area {
+    border: 1px solid #ddd;
+    padding: 8px;
+    min-height: 150px;
+    overflow-y: auto;
+    background-color: #fdfdfd;
+    flex-shrink: 0; /* Prevent shrinking if form area grows */
+}
+
+.oc-existing-groups-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.oc-existing-groups-list li {
+    padding: 8px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+}
+
+.oc-existing-groups-list li:last-child {
+    border-bottom: none;
+}
+
+.oc-existing-groups-list li:hover {
+    background-color: #f0f0f0;
+}
+
+.oc-existing-groups-list li.selected {
+    background-color: #2a5bb1;
+    color: white;
+    font-weight: 600;
+}
+
+.oc-group-form-area {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #fdfdfd;
+}
+
+.oc-group-form-area label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: -4px; /* Tighten space above input */
+}
+
+.oc-group-crud-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap; /* Allow buttons to wrap on smaller widths */
+}
+
+.oc-group-crud-available-items,
+.oc-group-crud-group-items {
+    flex: 1; /* Allow these lists to take available space in right pane */
+    border: 1px solid #ddd;
+    padding: 8px;
+    overflow-y: auto;
+    min-height: 200px; /* Ensure a minimum height */
+    background-color: #f9f9f9;
+}
+
+.oc-group-crud-right-pane h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 5px 0; /* Adjust margin as needed */
+    padding-left: 5px;
+}
+
+
+/* New Danger Button Style */
+.oc-btn-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.oc-btn-danger:hover {
+    background-color: #c82333;
+    color: white;
 }
