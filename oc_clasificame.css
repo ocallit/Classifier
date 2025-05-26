@@ -10,22 +10,28 @@ body {
     color: #333;
 }
 
-.oc-dialog {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.6);
-    display: none;
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
+/* Styles for the <dialog class="oc-dialog"> element */
+dialog.oc-dialog {
+    /* Remove properties handled by native dialog or no longer applicable */
+    /* position: fixed; top: 0; left: 0; width: 100%; height: 100%; */ /* Handled by ::backdrop and native centering */
+    /* display: none; */ /* Visibility handled by showModal()/close() */
+    /* align-items: center; justify-content: center; */ /* Native dialog is centered by default */
+    
+    /* Make the dialog itself a transparent container for oc-dialog-content */
+    background: transparent;
+    border: none;
+    padding: 0; /* Ensure no default padding on the dialog element itself */
+    z-index: 1000; /* Still useful for stacking context, though showModal is top-layer */
+    overflow: visible; /* Allow content (like box-shadow from child) to be visible */
+    /* width and height should be determined by .oc-dialog-content or be 'auto' */
 }
 
-.oc-dialog.open {
-    display: flex;
+/* Style for the backdrop of the modal dialog */
+dialog.oc-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.6);
 }
+
+/* .oc-dialog.open is no longer needed as visibility is handled by the <dialog> element state */
 
 .oc-dialog-content {
     background: white;
@@ -705,14 +711,18 @@ body {
 }
 
 /* Read-only mode - hide search in certain contexts */
+/*
 .oc-readonly .oc-global-search {
     display: none;
 }
+*/
 
 /* Read-only mode - center stats when search is hidden */
+/*
 .oc-readonly .oc-search-stats-row {
     justify-content: center;
 }
+*/
 
 @media (max-width: 768px) {
     .oc-search-stats-row {
