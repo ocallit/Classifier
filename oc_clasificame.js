@@ -34,98 +34,10 @@ class ocClasificame {
         
         this.initializeValues();
 
-        // For Group CRUD Dialog
-        this.groupCrudSortables = [];
-        this.isGroupCrudDialogInitialized = false;
-        this.groupItemsCache = {}; // Initialize cache for group items
         this.isClosingProgrammatically = false; // Flag for native dialog close handling
-
-        // Pre-populate cache for existing groups for simulation
-        // This assumes this.options.groups is already populated (e.g., from options passed to constructor)
-        if (this.options.groups && this.options.groups.length > 0) {
-            this.options.groups.forEach(group => {
-                // Example: Assign first few items to groups for demo purposes
-                // In a real scenario, this data would come from a backend or be empty initially
-                if (group.id === 'admin' && this.items.length >= 2) {
-                    this.groupItemsCache[group.id] = [this.items[0][this.options.valueId], this.items[1][this.options.valueId]];
-                } else if (group.id === 'users' && this.items.length >= 3) {
-                    this.groupItemsCache[group.id] = [this.items[2][this.options.valueId]];
-                     if (this.items.length >= 4) this.groupItemsCache[group.id].push(this.items[3][this.options.valueId]);
-                }
-                // Ensure itemCount is accurate if pre-populating cache
-                if (this.groupItemsCache[group.id]) {
-                    group.itemCount = this.groupItemsCache[group.id].length;
-                } else {
-                     this.groupItemsCache[group.id] = []; // Ensure cache entry exists
-                     group.itemCount = 0;
-                }
-            });
-        }
     }
 
-    _simulateSaveGroup(groupData) {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                if (!groupData.name || groupData.name.trim() === '') {
-                    resolve({ success: false, message: 'Group name cannot be empty.' });
-                    return;
-                }
-
-                let group;
-                if (groupData.groupId) { // Existing group
-                    group = this.options.groups.find(g => g.id.toString() === groupData.groupId.toString());
-                    if (group) {
-                        group.name = groupData.name;
-                        group.description = groupData.description;
-                        group.itemCount = groupData.items.length; // Update item count
-                        this.groupItemsCache[group.id] = groupData.items.map(String); // Store item IDs as strings
-                    } else {
-                        resolve({ success: false, message: 'Group not found for update.' });
-                        return;
-                    }
-                } else { // New group
-                    const newGroupId = Date.now().toString();
-                    group = {
-                        id: newGroupId,
-                        name: groupData.name,
-                        description: groupData.description,
-                        itemCount: groupData.items.length
-                    };
-                    this.options.groups.push(group);
-                    this.groupItemsCache[newGroupId] = groupData.items.map(String); // Store item IDs as strings
-                }
-                resolve({ success: true, group: { ...group } }); // Return a copy
-            }, 500);
-        });
-    }
-
-    _simulateDeleteGroup(groupId) {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                const groupIndex = this.options.groups.findIndex(g => g.id.toString() === groupId.toString());
-                if (groupIndex > -1) {
-                    this.options.groups.splice(groupIndex, 1);
-                    delete this.groupItemsCache[groupId.toString()];
-                    resolve({ success: true, deletedGroupId: groupId });
-                } else {
-                    resolve({ success: false, message: 'Group not found for deletion.' });
-                }
-            }, 500);
-        });
-    }
-
-    _simulateGetGroupItems(groupId) {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                const itemIdsInGroup = this.groupItemsCache[groupId.toString()] || [];
-                const itemsInGroup = itemIdsInGroup.map(id => 
-                    this.items.find(item => item[this.options.valueId].toString() === id.toString())
-                ).filter(item => item); // Filter out undefined if an ID is not found
-
-                resolve({ success: true, items: itemsInGroup });
-            }, 300);
-        });
-    }
+    // Removed _simulateSaveGroup, _simulateDeleteGroup, _simulateGetGroupItems
     
     determineMode() {
         // If not editable, force individual mode for display only
@@ -233,11 +145,7 @@ class ocClasificame {
                <button class="oc-btn oc-btn-primary" data-action="save">Save</button>`
             : `<button class="oc-btn oc-btn-primary" data-action="close">Close</button>`;
         
-        if (this.options.crudGroupMethod && this.options.editable) {
-            const manageGroupsBtnHTML = `<button class="oc-btn" id="oc-manage-groups-btn">Manage Groups</button>`;
-            // Prepend the Manage Groups button. It will appear on the left if footer is justify-content: flex-end
-            footerButtonsHTML = manageGroupsBtnHTML + footerButtonsHTML;
-        }
+        // "Manage Groups" button logic removed from footer
 
         this.dialogElement = document.createElement('dialog'); // Changed from 'div'
         this.dialogElement.className = 'oc-dialog';
@@ -421,6 +329,12 @@ class ocClasificame {
                             Apply Classification
                         </button>
                     </div>
+                    ${this.options.crudGroupMethod && this.options.editable ? `
+                    <div class="oc-group-control">
+                        <label>&nbsp;</label> <!-- For alignment -->
+                        <button class="oc-btn" id="oc-manage-groups-btn">Manage Groups</button>
+                    </div>
+                    ` : ''}
                 </div>
                 
                 <div class="oc-search-stats-row">
@@ -640,17 +554,25 @@ class ocClasificame {
             });
         }
 
-        if (this.options.crudGroupMethod && this.options.editable) { // Manage Groups is an edit operation
-            const manageGroupsBtn = this.dialogElement.querySelector('#oc-manage-groups-btn');
-            if (manageGroupsBtn) {
-                manageGroupsBtn.addEventListener('click', () => {
-                    this.openGroupCrudDialog();
-                });
-            }
-        }
+        // Removed #oc-manage-groups-btn listener block (from its old location in setupEventListeners)
 
         // Setup search listeners regardless of edit mode, as search is a read-only action
         this._setupSearchEventListeners();
+    }
+
+    _prepareBaseGroupsAsItemsForCompositeManagement(allBaseGroups, selectedBaseGroupIdsForCurrentComposite = new Set()) {
+        if (!allBaseGroups || !Array.isArray(allBaseGroups)) {
+            console.error('Cannot prepare group items: allBaseGroups is invalid.');
+            return [];
+        }
+        return allBaseGroups.map(group => ({
+            id: group.id.toString(), // Ensure ID is a string for consistency
+            name: group.name,
+            category: selectedBaseGroupIdsForCurrentComposite.has(group.id.toString()) ? 'selected_groups' : 'available_groups'
+            // Add any other properties from the original group if needed by ocClasificame items,
+            // e.g., if description or other metadata should be searchable/displayable within the item.
+            // For now, id, name, category are the essentials for ocClasificame's valueId, valueDisplay, valueColumnKey.
+        }));
     }
 
     _setupSearchEventListeners() {
@@ -704,6 +626,83 @@ class ocClasificame {
         if (!this.options.editable) return; // Keep this guard for other editable actions
         
         // Search listeners moved to _setupSearchEventListeners / setupEventListeners
+
+        if (this.options.crudGroupMethod) { // Check if the feature is enabled
+            const manageGroupsBtn = this.dialogElement.querySelector('#oc-manage-groups-btn');
+            if (manageGroupsBtn) {
+                manageGroupsBtn.addEventListener('click', () => {
+                    const groupManagementCategories = [
+                        { id: 'available_groups', label: 'AG', title: 'Available Base Groups' },
+                        { id: 'selected_groups', label: 'SG', title: 'Selected Groups for Composite' }
+                    ];
+
+                    // For now, creating a new composite group, so selectedBaseGroupIds is empty
+                    const groupMgmtItems = this._prepareBaseGroupsAsItemsForCompositeManagement(this.options.groups);
+
+                    const childInstanceOptions = {
+                        title: 'Create Composite Group',
+                        editable: true,
+                        showToolbar: false, 
+                        crudGroupMethod: false, // CRITICAL: Prevent recursion
+                        showIndividualMethod: true, 
+                        showGroupMethod: false, 
+                        canSaveIndividualMethod: false, 
+                        valueId: 'id',
+                        valueDisplay: 'name',
+                        valueColumnKey: 'category',
+                        // dialogClass: 'oc-child-clasificame-dialog' // Optional: for different styling
+                    };
+
+                    const groupMgmtInstance = new ocClasificame(groupManagementCategories, groupMgmtItems, childInstanceOptions);
+                    
+                    const compositeGroupName = prompt("Enter name for the new composite group:");
+                    if (!compositeGroupName || compositeGroupName.trim() === '') {
+                        alert("Composite group name cannot be empty.");
+                        return; 
+                    }
+                    const compositeGroupDescription = prompt("Enter description for the new composite group (optional):") || "";
+
+                    groupMgmtInstance.open({ title: `Define Composite Group: ${compositeGroupName}` }) // Pass dynamic title
+                        .then(result => {
+                            const selectedBaseGroupIds = result.selected_groups || [];
+                            
+                            if (selectedBaseGroupIds && selectedBaseGroupIds.length > 0) {
+                                const newCompositeGroup = {
+                                    id: `composite_${Date.now()}`,
+                                    name: compositeGroupName,
+                                    description: compositeGroupDescription,
+                                    itemCount: selectedBaseGroupIds.length, // Number of base groups
+                                    isEditable: true, // Assuming composite groups can be edited
+                                    isComposite: true,
+                                    baseGroupIds: selectedBaseGroupIds 
+                                };
+                            
+                                // Add to the parent instance's groups array
+                                if (!this.options.groups) {
+                                    this.options.groups = [];
+                                }
+                                this.options.groups.push(newCompositeGroup);
+                            
+                                alert(`Composite group '${compositeGroupName}' saved successfully with ${selectedBaseGroupIds.length} base group(s).`);
+                            
+                                // TODO (Future): Update any UI elements in the parent dialog that list groups,
+                                // for example, the #group-selector in createGroupSectionHTML if it's active.
+                                // This might involve re-rendering parts of the parent dialog.
+                                // For now, the data is updated.
+                                
+                                console.log('Updated this.options.groups:', this.options.groups);
+                            
+                            } else {
+                                alert('No base groups were selected for the composite group. Nothing saved.');
+                            }
+                        })
+                        .catch(error => {
+                            console.log('Composite group creation cancelled or failed:', error.message);
+                            alert('Composite group creation cancelled or an error occurred.'); // User feedback
+                        });
+                });
+            }
+        }
         
         const groupSelector = this.dialogElement.querySelector('#group-selector');
         const targetSelector = this.dialogElement.querySelector('#group-target');
@@ -1194,360 +1193,5 @@ class ocClasificame {
         console.log(`Sorted items in category ${categoryId}`);
     }
 
-    _createGroupCrudDialogHTML() {
-        // Ensure unique IDs for elements within this dialog to avoid conflicts
-        return `
-            <dialog class="oc-group-crud-dialog">
-                <div class="oc-dialog-header">
-                    <h2>Manage Groups</h2>
-                    <button class="oc-dialog-close-crud" aria-label="Close">×</button>
-                </div>
-                <div class="oc-group-crud-dialog-body">
-                    <div class="oc-group-crud-left-pane">
-                        <div class="oc-group-list-area">
-                            <ul class="oc-existing-groups-list" id="oc-crud-existing-groups-list">
-                                <!-- Placeholder, will be populated dynamically -->
-                                <li>Loading groups...</li>
-                            </ul>
-                        </div>
-                        <div class="oc-group-form-area">
-                            <input type="hidden" id="oc-group-crud-groupid">
-                            <label for="oc-group-crud-name">Group Name:</label>
-                            <input type="text" id="oc-group-crud-name" class="oc-manager-input" placeholder="Enter group name">
-                            
-                            <label for="oc-group-crud-description">Group Description:</label>
-                            <textarea id="oc-group-crud-description" class="oc-manager-textarea" placeholder="Enter group description"></textarea>
-                            
-                            <div class="oc-group-crud-actions">
-                                <button class="oc-btn oc-btn-primary" id="oc-group-crud-save">Save Group</button>
-                                <button class="oc-btn oc-btn-danger" id="oc-group-crud-delete" disabled>Delete Group</button>
-                                <button class="oc-btn oc-btn-secondary" id="oc-group-crud-clear">New/Clear Form</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="oc-group-crud-right-pane">
-                        <div>
-                            <h3>Available Items</h3>
-                            <div class="oc-items-list oc-group-crud-available-items" id="oc-crud-available-items">
-                                <p class="oc-empty-state">No items available or group not selected.</p>
-                            </div>
-                        </div>
-                        <div>
-                            <h3>Items in Group</h3>
-                            <div class="oc-items-list oc-group-crud-group-items" id="oc-crud-group-items">
-                                <p class="oc-empty-state">Select a group to see its items.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="oc-dialog-footer">
-                    <button class="oc-btn oc-btn-secondary" data-action="close-crud">Close</button>
-                </div>
-            </dialog>
-        `;
-    }
-
-    openGroupCrudDialog() {
-        let dialogElement = document.querySelector('.oc-group-crud-dialog');
-        if (!dialogElement) {
-            document.body.insertAdjacentHTML('beforeend', this._createGroupCrudDialogHTML());
-            dialogElement = document.querySelector('.oc-group-crud-dialog');
-        }
-
-        // Ensure dialogElement is not null before proceeding
-        if (!dialogElement) {
-            console.error('Failed to create or find the group CRUD dialog.');
-            return;
-        }
-
-        dialogElement.showModal();
-
-        // Close button in footer
-        const footerCloseButton = dialogElement.querySelector('.oc-dialog-footer button[data-action="close-crud"]');
-        if (footerCloseButton) {
-            footerCloseButton.addEventListener('click', () => { // Fixed syntax error
-                dialogElement.close();
-            });
-        }
-
-        // Close button in header
-        const headerCloseButton = dialogElement.querySelector('.oc-dialog-header .oc-dialog-close-crud');
-        if (headerCloseButton) {
-            headerCloseButton.addEventListener('click', () => { // Fixed syntax error
-                dialogElement.close();
-            });
-        }
-        
-        // Optional: Close when clicking on the backdrop (if enabled by browser for <dialog>)
-        // dialogElement.addEventListener('click', (event) => {
-        //     if (event.target === dialogElement) {
-        //         dialogElement.close();
-        //     }
-        // });
-
-        if (!this.isGroupCrudDialogInitialized) {
-            this._setupGroupCrudEventListeners(dialogElement);
-            this.isGroupCrudDialogInitialized = true; 
-        }
-        
-        this._populateGroupList(dialogElement);
-        // Call with isNewGroup = true to load all available items for a new group scenario
-        this._clearGroupCrudForm(dialogElement, true, true); 
-        // _setupGroupCrudSortables is called within _clearGroupCrudForm and group selection,
-        // so the explicit call here after _clearGroupCrudForm is good for the initial setup.
-        this._setupGroupCrudSortables(dialogElement); 
-    }
-
-    _destroyGroupCrudSortables() {
-        if (this.groupCrudSortables && this.groupCrudSortables.length > 0) {
-            this.groupCrudSortables.forEach(s => s.destroy());
-            this.groupCrudSortables = [];
-            // console.log('Group CRUD Sortables destroyed.'); // Optional for debugging
-        }
-    }
-
-    _populateGroupList(dialogElement) {
-        const ul = dialogElement.querySelector('#oc-crud-existing-groups-list');
-        ul.innerHTML = ''; // Clear existing
-
-        if (this.options.groups && this.options.groups.length > 0) {
-            this.options.groups.forEach(group => {
-                const li = document.createElement('li');
-                li.textContent = `${group.name} (${group.itemCount || 0} items)`;
-                li.dataset.groupId = group.id;
-                ul.appendChild(li);
-            });
-        } else {
-            ul.innerHTML = '<li>No groups available.</li>';
-        }
-    }
-
-    _clearGroupCrudForm(dialogElement, clearSelection = true, isNewGroupSetup = false) {
-        dialogElement.querySelector('#oc-group-crud-groupid').value = '';
-        dialogElement.querySelector('#oc-group-crud-name').value = '';
-        dialogElement.querySelector('#oc-group-crud-description').value = '';
-        dialogElement.querySelector('#oc-group-crud-delete').disabled = true;
-
-        if (clearSelection) {
-            const selectedLi = dialogElement.querySelector('#oc-crud-existing-groups-list li.selected');
-            if (selectedLi) {
-                selectedLi.classList.remove('selected');
-            }
-        }
-
-        const availableItemsList = dialogElement.querySelector('#oc-crud-available-items');
-        const groupItemsList = dialogElement.querySelector('#oc-crud-group-items');
-
-        if (isNewGroupSetup) {
-            availableItemsList.innerHTML = ''; // Clear previous items
-            this.items.forEach(item => { // this.items is the master list of all items
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'oc-item';
-                itemDiv.dataset.itemId = item[this.options.valueId];
-                itemDiv.textContent = item[this.options.valueDisplay];
-                availableItemsList.appendChild(itemDiv);
-            });
-            if (this.items.length === 0) {
-                availableItemsList.innerHTML = '<p class="oc-empty-state">No items available in the system.</p>';
-            }
-            groupItemsList.innerHTML = '<p class="oc-empty-state">Drag items here to add to the new group.</p>';
-        } else {
-            // Default empty state when not specifically setting up for a new group (e.g. after delete)
-            availableItemsList.innerHTML = '<p class="oc-empty-state">No items available or group not selected.</p>';
-            groupItemsList.innerHTML = '<p class="oc-empty-state">Select a group or create a new one.</p>';
-        }
-        // Potentially re-initialize sortables if lists were cleared/repopulated
-        this._setupGroupCrudSortables(dialogElement);
-    }
-
-    _setupGroupCrudEventListeners(dialogElement) {
-        // Ensure event listeners for close buttons are only added once,
-        // managed by this.isGroupCrudDialogInitialized in openGroupCrudDialog.
-
-        const footerCloseButton = dialogElement.querySelector('.oc-dialog-footer button[data-action="close-crud"]');
-        if (footerCloseButton && !footerCloseButton.dataset.listenerAttached) {
-            footerCloseButton.addEventListener('click', () => {
-                this._destroyGroupCrudSortables(); 
-                dialogElement.close();
-            });
-            footerCloseButton.dataset.listenerAttached = 'true';
-        }
-
-        const headerCloseButton = dialogElement.querySelector('.oc-dialog-header .oc-dialog-close-crud');
-        if (headerCloseButton && !headerCloseButton.dataset.listenerAttached) {
-            headerCloseButton.addEventListener('click', () => {
-                this._destroyGroupCrudSortables();
-                dialogElement.close();
-            });
-            headerCloseButton.dataset.listenerAttached = 'true';
-        }
-        
-        // Also handle the 'cancel' event which can be triggered by Esc key
-        if (!dialogElement.dataset.cancelListenerAttached) {
-            dialogElement.addEventListener('cancel', () => {
-                this._destroyGroupCrudSortables();
-            });
-            dialogElement.dataset.cancelListenerAttached = 'true';
-        }
-
-        const groupListUl = dialogElement.querySelector('#oc-crud-existing-groups-list');
-        groupListUl.addEventListener('click', (e) => {
-            if (e.target.tagName === 'LI' && e.target.dataset.groupId) {
-                const previouslySelected = groupListUl.querySelector('li.selected');
-                if (previouslySelected) {
-                    previouslySelected.classList.remove('selected');
-                }
-                e.target.classList.add('selected');
-
-                const groupId = e.target.dataset.groupId;
-                const group = this.options.groups.find(g => g.id.toString() === groupId.toString());
-
-                if (group) {
-                    dialogElement.querySelector('#oc-group-crud-groupid').value = group.id;
-                    dialogElement.querySelector('#oc-group-crud-name').value = group.name;
-                    dialogElement.querySelector('#oc-group-crud-description').value = group.description || '';
-                    dialogElement.querySelector('#oc-group-crud-delete').disabled = false;
-
-                    this._simulateGetGroupItems(groupId).then(response => {
-                        const groupItemsList = dialogElement.querySelector('#oc-crud-group-items');
-                        const availableItemsList = dialogElement.querySelector('#oc-crud-available-items');
-                        groupItemsList.innerHTML = ''; // Clear
-                        availableItemsList.innerHTML = ''; // Clear
-
-                        if (response.success) {
-                            const groupItemIds = new Set(response.items.map(item => item[this.options.valueId].toString()));
-
-                            response.items.forEach(item => {
-                                const itemDiv = document.createElement('div');
-                                itemDiv.className = 'oc-item';
-                                itemDiv.dataset.itemId = item[this.options.valueId];
-                                itemDiv.textContent = item[this.options.valueDisplay];
-                                groupItemsList.appendChild(itemDiv);
-                            });
-
-                            this.items.forEach(appItem => {
-                                if (!groupItemIds.has(appItem[this.options.valueId].toString())) {
-                                    const itemDiv = document.createElement('div');
-                                    itemDiv.className = 'oc-item';
-                                    itemDiv.dataset.itemId = appItem[this.options.valueId];
-                                    itemDiv.textContent = appItem[this.options.valueDisplay];
-                                    availableItemsList.appendChild(itemDiv);
-                                }
-                            });
-
-                            if (response.items.length === 0) {
-                                groupItemsList.innerHTML = '<p class="oc-empty-state">No items in this group. Drag from available items.</p>';
-                            }
-                            if (availableItemsList.children.length === 0 && this.items.length > 0) {
-                                // All items are in the group
-                                availableItemsList.innerHTML = '<p class="oc-empty-state">All items are in this group.</p>';
-                            } else if (this.items.length === 0) {
-                                availableItemsList.innerHTML = '<p class="oc-empty-state">No items available in the system.</p>';
-                            }
-
-                        } else {
-                            groupItemsList.innerHTML = '<p class="oc-empty-state">Error loading items.</p>';
-                            availableItemsList.innerHTML = '<p class="oc-empty-state">Error loading items.</p>';
-                            alert(response.message || 'Could not load group items.');
-                        }
-                        this._setupGroupCrudSortables(dialogElement);
-                    });
-                }
-            }
-        });
-
-        const clearBtn = dialogElement.querySelector('#oc-group-crud-clear');
-        clearBtn.addEventListener('click', () => {
-            // When "New/Clear Form" is clicked, it's for setting up a new group
-            this._clearGroupCrudForm(dialogElement, true, true);
-        });
-
-        const saveBtn = dialogElement.querySelector('#oc-group-crud-save');
-        saveBtn.addEventListener('click', async () => {
-            const groupId = dialogElement.querySelector('#oc-group-crud-groupid').value;
-            const name = dialogElement.querySelector('#oc-group-crud-name').value.trim();
-            const description = dialogElement.querySelector('#oc-group-crud-description').value.trim();
-            
-            const itemsInGroupIds = [];
-            dialogElement.querySelectorAll('#oc-crud-group-items .oc-item').forEach(itemEl => {
-                itemsInGroupIds.push(itemEl.dataset.itemId);
-            });
-
-            const groupData = {
-                groupId: groupId || null, // Send null if new group
-                name,
-                description,
-                items: itemsInGroupIds
-            };
-
-            const response = await this._simulateSaveGroup(groupData);
-            if (response.success) {
-                alert('Group saved successfully!');
-                // Update this.options.groups (handled by _simulateSaveGroup)
-                this._populateGroupList(dialogElement); // Refresh list
-                
-                // Select the saved/updated group and repopulate form
-                const savedGroupId = response.group.id.toString();
-                const groupLi = dialogElement.querySelector(`#oc-crud-existing-groups-list li[data-group-id="${savedGroupId}"]`);
-                if (groupLi) {
-                    // Simulate click to re-select and load items
-                    groupLi.click(); 
-                } else {
-                     this._clearGroupCrudForm(dialogElement, true, true); // Clear for new if not found
-                }
-            } else {
-                alert(response.message || 'Error saving group.');
-            }
-        });
-
-        const deleteBtn = dialogElement.querySelector('#oc-group-crud-delete');
-        deleteBtn.addEventListener('click', async () => {
-            const groupId = dialogElement.querySelector('#oc-group-crud-groupid').value;
-            if (!groupId) return;
-
-            if (confirm(`Are you sure you want to delete group "${dialogElement.querySelector('#oc-group-crud-name').value}"?`)) {
-                const response = await this._simulateDeleteGroup(groupId);
-                if (response.success) {
-                    alert('Group deleted successfully!');
-                    // this.options.groups updated by _simulateDeleteGroup
-                    this._populateGroupList(dialogElement);
-                    this._clearGroupCrudForm(dialogElement, true, true); // Clear form and set for new group
-                } else {
-                    alert(response.message || 'Error deleting group.');
-                }
-            }
-        });
-    }
-
-    _setupGroupCrudSortables(dialogElement) {
-        // Destroy existing instances if any, to prevent duplicates if called multiple times
-        if (this.groupCrudSortables && this.groupCrudSortables.length > 0) {
-            this.groupCrudSortables.forEach(s => s.destroy());
-        }
-        this.groupCrudSortables = [];
-
-        const availableList = dialogElement.querySelector('#oc-crud-available-items');
-        const groupList = dialogElement.querySelector('#oc-crud-group-items');
-
-        if (!availableList || !groupList) {
-            console.warn('Group CRUD Sortable lists not found, skipping setup.');
-            return;
-        }
-        
-        // Ensure the lists are not showing "empty state" paragraphs when initializing sortable
-        if (availableList.querySelector('p.oc-empty-state')) availableList.innerHTML = '';
-        if (groupList.querySelector('p.oc-empty-state')) groupList.innerHTML = '';
-
-
-        const commonSortableOptions = {
-            group: 'group-crud-items',
-            animation: 150,
-            ghostClass: 'sortable-ghost',
-            chosenClass: 'sortable-chosen',
-            // Add other standard options from main sortable if needed
-        };
-
-        this.groupCrudSortables.push(new Sortable(availableList, commonSortableOptions));
-        this.groupCrudSortables.push(new Sortable(groupList, commonSortableOptions));
-    }
+    // All old Group CRUD dialog methods and properties removed.
 }
