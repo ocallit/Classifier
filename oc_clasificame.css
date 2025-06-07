@@ -357,8 +357,6 @@ dialog.oc-dialog::backdrop {
     border-top: 1px solid #e0e0e0;
     flex-wrap: wrap;
     gap: 8px;
-    /* Ensure items are vertically centered if wrapping occurs or heights differ */
-    align-items: center; 
 }
 
 .oc-nav-btn {

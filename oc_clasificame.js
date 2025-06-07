@@ -190,7 +190,7 @@ class ocClasificame {
 
         if(this.dialogElement) {
             if(this.dialogElement.tagName === 'DIALOG' && this.dialogElement.openDialog) {
-                this.dialogElement.closeDialog(); // Native dialog closeDialog
+                this.dialogElement.close(); // Native dialog closeDialog
             }
             this.dialogElement.remove(); // Remove from DOM
             this.dialogElement = null;
@@ -263,8 +263,8 @@ class ocClasificame {
         // Modify footer buttons based on editable state
         const footerButtonsHTML = this.options.editable 
             ? `<button class="oc-btn oc-btn-secondary" data-action="cancel">Cancel</button>
-               <button class="oc-btn oc-btn-primary" data-action="save">Save</button>`
-            : `<button class="oc-btn oc-btn-primary" data-action="close">Close</button>`;
+               <button class="oc-btn oc-btn-primary" data-action="save">Guardar</button>`
+            : `<button class="oc-btn oc-btn-primary" data-action="close">Cerrar</button>`;
 
 
         this.dialogElement = document.createElement('dialog');
@@ -486,7 +486,7 @@ class ocClasificame {
     }
     
     _setupEventListeners() {
-        this.dialogElement.querySelector('.oc-dialog-closeDialog').addEventListener('click', () => {
+        this.dialogElement.querySelector('.oc-dialog-close').addEventListener('click', () => {
             this.closeDialog(false);
         });
         
@@ -507,7 +507,7 @@ class ocClasificame {
                 });
             }
         } else {
-            const closeBtn = this.dialogElement.querySelector('[data-action="closeDialog"]');
+            const closeBtn = this.dialogElement.querySelector('[data-action="close"]');
             if(closeBtn) {
                 closeBtn.addEventListener('click', () => {
                     this.closeDialog(false);
