@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ocClasificame QUnit Tests</title>
+    
+    <!-- QUnit CSS and JS -->
+    <link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-2.19.4.css">
+    <script src="https://code.jquery.com/qunit/qunit-2.19.4.js"></script>
+    <script src="https://cdn-script.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    
+    <!-- SortableJS dependency -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <!-- Component under test -->
+    <script src="../src/oc_clasificame.js"></script>
+    
+    <style>
+        /* Hide the dialog during tests */
+        .oc-dialog {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="qunit"></div>
+    <div id="qunit-fixture"></div>
+    
+    <script>
+        // Test data helpers
+        function getTestCategories() {
+            return [
+                {id: 'none', label: 'X', title: 'No Permission'},
+                {id: 'read', label: 'RO', title: 'Read Only'},
+                {id: 'write', label: 'RW', title: 'Read/Write'}
+            ];
+        }
+
+        function getTestItems() {
+            return [
+                {id: 1, name: "John Doe", category: "none"},
+                {id: 2, name: "Jane Smith", category: "read"},
+                {id: 3, name: "Alice Johnson", category: "write"},
+                {id: 4, name: "Bob Williams", category: "none"},
+                {id: 5, name: "Charlie Brown", category: "read"},
+                {id: 6, name: "Diana Prince", category: "write"},
+                {id: 7, name: "Edward Norton", category: "none"},
+                {id: 8, name: "Fiona Apple", category: "read"},
+                {id: "snicat", name: "Sin cat"},
+                {id: "nullcat", name: "null cat", category: null},
+                {id: "invalid", name: "invalid cat", category: "OTRO TEMA"}
+            ];
+        }
+
+        function getTestGroups() {
+            return [
+                {
+                    id: 'admin',
+                    name: 'Administrators',
+                    itemCount: 2,
+                    description: 'System administrators with full access'
+                },
+                {
+                    id: 'users',
+                    name: 'Regular Users', 
+                    itemCount: 4,
+                    description: 'Standard users with basic access'
+                },
+                {
+                    id: 'managers',
+                    name: 'Managers',
+                    itemCount: 3,
+                    description: 'Department managers and supervisors'
+                }
+            ];
+        }
+
+        function getSavedClassifications() {
+            return [
+                {
+                    id: "1",
+                    name: "Admins Only",
+                    description: "Give admin privileges to senior staff members",
+                    classification: {
+                        none: ["4", "7"],
+                        read: ["1", "2", "8"],
+                        write: ["3", "5", "6"]
+                    }
+                },
+                {
+                    id: "2", 
+                    name: "Read-Only Setup",
+                    description: "Most users get read access, few get write access",
+                    classification: {
+                        none: ["4"],
+                        read: ["1", "2", "5", "7", "8"],
+                        write: ["3", "6"]
+                    }
+                }
+            ];
+        }
+
+
+        // Constructor and Basic Functionality Tests
+        QUnit.module('Constructor and Initialization', function() {
+
+            QUnit.test('Constructor with minimal parameters', function(assert) {
+                const originalItems = getTestItems();
+                const classifier = new ocClasificame(getTestCategories(), originalItems);
+                const dialogPromise = classifier.openDialog();
+                dialogPromise.catch(() => {}); // Suppress rejection
+                assert.ok(classifier instanceof ocClasificame, 'Instance created successfully');
+                assert.deepEqual(classifier.categories, getTestCategories(), 'Categories assigned correctly');
+
+                // Items array should be the same reference but some categories may be updated
+                assert.equal(classifier.items, originalItems, 'Items reference assigned correctly');
+                assert.equal(classifier.items.length, originalItems.length, 'Items array has correct length');
+
+                // Check that items with invalid categories have been updated to default category
+                const updatedSnicat = classifier.items.find(item => item.id === "snicat");
+                const updatedNullcat = classifier.items.find(item => item.id === "nullcat");
+                const updatedInvalid = classifier.items.find(item => item.id === "invalid");
+
+                assert.equal(updatedSnicat.category, "none", 'Item with undefined category updated to default');
+                assert.equal(updatedNullcat.category, "none", 'Item with null category updated to default');
+                assert.equal(updatedInvalid.category, "none", 'Item with invalid category updated to default');
+
+                assert.equal(classifier.options.title, 'Classification', 'Default title set');
+                assert.equal(classifier.options.editable, true, 'Default editable state is true');
+            });
+
+            QUnit.test('Constructor with custom options', function(assert) {
+                const customOptions = {
+                    title: 'Custom Classification',
+                    editable: false,
+                    showToolbar: false,
+                    valueId: 'id',
+                    valueDisplay: 'name',
+                    itemsCategoryIdKey: 'category'
+                };
+
+                const classifier = new ocClasificame(getTestCategories(), getTestItems(), customOptions);
+                const dialogPromise = classifier.openDialog();
+                dialogPromise.catch(() => {}); // Suppress rejection
+                assert.equal(classifier.options.title, 'Custom Classification', 'Custom title set');
+                assert.equal(classifier.options.editable, false, 'Custom editable state set');
+                assert.equal(classifier.options.showToolbar, false, 'Custom toolbar setting set');
+            });
+
+            QUnit.test('Invalid unassignedDefaultTo falls back to first category', function(assert) {
+                const classifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                    valueId: 'id',
+                    valueDisplay: 'name',
+                    itemsCategoryIdKey: 'category',
+                    unassignedDefaultTo: 'nonexistent'
+                });
+                const dialogPromise = classifier.openDialog();
+                dialogPromise.catch(() => {}); // Suppress rejection
+                const values = classifier.getValue();
+
+                // Items with invalid categories should fall back to first category (none)
+                assert.ok(values.none.includes('snicat'), 'Item with undefined category falls back to first category');
+                assert.ok(values.none.includes('nullcat'), 'Item with null category falls back to first category');
+                assert.ok(values.none.includes('invalid'), 'Item with invalid category falls back to first category');
+            });
+        });
+
+        // Content Generation Tests
+        QUnit.module('Content Generation', function() {
+            
+            QUnit.test('createContent generates proper HTML structure', function(assert) {
+                const classifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                    showPlantillaMethod: true,
+                    showGroupMethod: true
+                });
+                
+                const content = classifier.createContent();
+                
+                assert.ok(content.includes('oc-clasificame'), 'Main container class present');
+                assert.ok(content.includes('oc-search-input'), 'Search input present');
+                assert.ok(content.includes('oc-columns'), 'Columns container present');
+                assert.ok(content.includes('oc-classification-manager'), 'Classification manager present');
+            });
+
+            QUnit.test('Read-only mode content differences', function(assert) {
+                const editableClassifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                    editable: true,
+                    showToolbar: true
+                });
+
+                const readOnlyClassifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                    editable: false,
+                    showToolbar: true
+                });
+
+                editableClassifier.openDialog();
+
+                const dialogPromiseEditable = editableClassifier.openDialog();
+                dialogPromiseEditable.catch(() => {}); // Suppress rejection
+                readOnlyClassifier.openDialog();
+
+                const dialogPromise = readOnlyClassifier.openDialog();
+                dialogPromise.catch(() => {}); // Suppress rejection
+                const editableDialog = editableClassifier.dialogElement;
+                const readOnlyDialog = readOnlyClassifier.dialogElement;
+
+                assert.ok(readOnlyDialog.classList.contains('oc-readonly'), 'Read-only class added to dialog');
+                assert.ok(editableDialog.querySelector('.oc-item-btn'), 'Editable mode has item buttons');
+                assert.notOk(readOnlyDialog.querySelector('.oc-item-btn'), 'Read-only mode has no item buttons');
+
+                editableClassifier.closeDialog(false);
+                readOnlyClassifier.closeDialog(false);
+            });
+        });
+
+        // Item Movement Tests
+        QUnit.module('Item Movement', function() {
+            
+            QUnit.test('_moveItemTo moves items correctly', function(assert) {
+                const classifier = new ocClasificame(getTestCategories(), getTestItems());
+                const dialogPromise = classifier.openDialog();
+                dialogPromise.catch(() => {}); // Suppress rejection
+
+                // The current getValue() implementation doesn't read from DOM, it uses currentValues
+                // Since _moveItemTo only updates DOM and items array, we need to check DOM directly
+                const initialItem = classifier.dialogElement.querySelector('[data-item-id="1"]');
+                assert.equal(initialItem.dataset.category, 'none', 'Item 1 initially in none category');
+
+                // Move item 1 from 'none' to 'read' - use string since DOM datasets are strings
+                classifier._moveItemTo('1', 'read');
+                
+                // Check DOM was updated
+                const movedItem = classifier.dialogElement.querySelector('[data-item-id="1"]');
+                assert.equal(movedItem.dataset.category, 'read', 'Item 1 moved to read category in DOM');
+                
+                // Check it's in the correct list
+                const readList = classifier.dialogElement.querySelector('[data-category="read"]');
+                const noneList = classifier.dialogElement.querySelector('[data-category="none"]');
+                assert.ok(readList.contains(movedItem), 'Item 1 is in read list');
+                assert.notOk(noneList.contains(movedItem), 'Item 1 is not in none list');
+
+                classifier.closeDialog(false);
+            });
+
+            QUnit.test('_moveItemTo works without dialog (data-only mode)', function(assert) {
+                const classifier = new ocClasificame(getTestCategories(), getTestItems());
+                
+                // Move item without opening dialog - this should update the data model
+                classifier._moveItemTo(1, 'read');
+                
+                // Check that the item's category was updated in the data
+                const item = classifier.items.find(i => i.id === 1);
+                assert.equal(item.category, 'read', 'Item category updated in data model');
+            });
+
+            QUnit.test('_moveVisibleItems moves multiple items', function(assert) {
+                const classifier = new ocClasificame(getTestCategories(), getTestItems());
+                const dialogPromise = classifier.openDialog();
+                dialogPromise.catch(() => {}); // Suppress rejection
+
+                // Check initial DOM state
+                const noneList = classifier.dialogElement.querySelector('[data-category="none"]');
+                const writeList = classifier.dialogElement.querySelector('[data-category="write"]');
+                const initialNoneItems = noneList.querySelectorAll('.oc-item');
+                const initialWriteItems = writeList.querySelectorAll('.oc-item');
+                
+                console.log('Initial none items:', initialNoneItems.length);
+                console.log('Initial write items:', initialWriteItems.length);
+
+                // Move all items from 'none' to 'write'
+                classifier._moveVisibleItems('none', 'write');
+                
+                // Check DOM after move
+                const finalNoneItems = noneList.querySelectorAll('.oc-item');
+                const finalWriteItems = writeList.querySelectorAll('.oc-item');
+                
+                assert.equal(finalNoneItems.length, 0, 'None category should be empty after move');
+                assert.equal(finalWriteItems.length, initialNoneItems.length + initialWriteItems.length, 
+                    'Write category should contain all moved items plus original items');
+
+                // Check specific items moved to write list
+                const item1 = classifier.dialogElement.querySelector('[data-item-id="1"]');
+                const item4 = classifier.dialogElement.querySelector('[data-item-id="4"]');
+                const item7 = classifier.dialogElement.querySelector('[data-item-id="7"]');
+                
+                assert.ok(writeList.contains(item1), 'Item 1 moved to write');
+                assert.ok(writeList.contains(item4), 'Item 4 moved to write');
+                assert.ok(writeList.contains(item7), 'Item 7 moved to write');
+
+                classifier.closeDialog(false);
+            });
+        });
+
+        // Group Functionality Tests
+        QUnit.module('Group Functionality', function() {
+            
+            QUnit.test('Group items loaded correctly', function(assert) {
+                const classifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                    showGroupMethod: true,
+                    groups: getTestGroups()
+                });
+
+                const adminItems = classifier.getMockGroupItems('admin');
+                assert.equal(adminItems.length, 2, 'Admin group has correct number of items');
+                assert.ok(adminItems.some(item => item.name === "Alice Johnson"), 'Admin group contains Alice Johnson');
+                assert.ok(adminItems.some(item => item.name === "Diana Prince"), 'Admin group contains Diana Prince');
+            });
+
+            QUnit.test('applyGroupClassification moves group items to target category', function(assert) {
+                const classifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                    showGroupMethod: true,
+                    groups: getTestGroups()
+                });
+
+                const dialogPromise = classifier.openDialog();
+                dialogPromise.catch(() => {}); // Suppress rejection
+                
+                // Load admin group and apply to write category
+                classifier.selectedGroupItems = classifier.getMockGroupItems('admin');
+                classifier.applyGroupClassification('admin', 'write');
+                
+                // Check DOM directly since getValue() doesn't reflect DOM changes
+                const writeList = classifier.dialogElement.querySelector('[data-category="write"]');
+                
+                // Alice Johnson has ID 3, Diana Prince has ID 6
+                const aliceElement = classifier.dialogElement.querySelector('[data-item-id="3"]');
+                const dianaElement = classifier.dialogElement.querySelector('[data-item-id="6"]');
+                
+                assert.ok(writeList.contains(aliceElement), 'Alice Johnson moved to write category');
+                assert.ok(writeList.contains(dianaElement), 'Diana Prince moved to write category');
+                
+                // Also check their data-category attributes
+                assert.equal(aliceElement.dataset.category, 'write', 'Alice Johnson has write category in DOM');
+                assert.equal(dianaElement.dataset.category, 'write', 'Diana Prince has write category in DOM');
+
+                classifier.closeDialog(false);
+            });
+        });
+
+        // Search Functionality Tests
+        QUnit.module('Search Functionality', function() {
+            
+            QUnit.test('Search filters items correctly', function(assert) {
+                const classifier = new ocClasificame(getTestCategories(), getTestItems());
+                const dialogPromise = classifier.openDialog();
+                dialogPromise.catch(() => {}); // Suppress rejection
+
+                // Search for "John"
+                classifier.search('John');
+                
+                const visibleItems = classifier.dialogElement.querySelectorAll('.oc-item:not([style*="display: none"])');
+                const hiddenItems = classifier.dialogElement.querySelectorAll('.oc-item[style*="display: none"]');
+                
+                assert.equal(visibleItems.length, 2, 'Correct number of items visible (John Doe and Alice Johnson)');
+                assert.ok(hiddenItems.length > 0, 'Some items are hidden');
+
+                // Clear search
+                classifier.search('');
+                const allVisibleAfterClear = classifier.dialogElement.querySelectorAll('.oc-item:not([style*="display: none"])');
+                assert.ok(allVisibleAfterClear.length > visibleItems.length, 'More items visible after clearing search');
+
+                classifier.closeDialog(false);
+            });
+
+            QUnit.test('Search is case insensitive', function(assert) {
+                const classifier = new ocClasificame(getTestCategories(), getTestItems());
+                const dialogPromise = classifier.openDialog();
+                dialogPromise.catch(() => {}); // Suppress rejection
+
+                classifier.search('JOHN');
+                const visibleItems = classifier.dialogElement.querySelectorAll('.oc-item:not([style*="display: none"])');
+                
+                assert.ok(visibleItems.length > 0, 'Case insensitive search works');
+
+                classifier.closeDialog(false);
+            });
+        });
+
+        // Classification Templates Tests
+        QUnit.module('Classification Templates', function() {
+            
+            QUnit.test('applyClassification applies saved classification correctly', function(assert) {
+                const classifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                    savedClassifications: getSavedClassifications()
+                });
+
+                const dialogPromise = classifier.openDialog();
+                dialogPromise.catch(() => {}); // Suppress rejection
+                
+                // Apply the "Admins Only" classification
+                classifier.applyClassification("1");
+                
+                // Check DOM directly since getValue() doesn't reflect DOM changes
+                const noneList = classifier.dialogElement.querySelector('[data-category="none"]');
+                const readList = classifier.dialogElement.querySelector('[data-category="read"]');
+                const writeList = classifier.dialogElement.querySelector('[data-category="write"]');
+                
+                // Check that items are in expected categories according to saved classification
+                // Expected: none: ["4", "7"], read: ["1", "2", "8"], write: ["3", "5", "6"]
+                
+                const item1 = classifier.dialogElement.querySelector('[data-item-id="1"]');
+                const item2 = classifier.dialogElement.querySelector('[data-item-id="2"]');
+                const item3 = classifier.dialogElement.querySelector('[data-item-id="3"]');
+                const item4 = classifier.dialogElement.querySelector('[data-item-id="4"]');
+                const item5 = classifier.dialogElement.querySelector('[data-item-id="5"]');
+                const item6 = classifier.dialogElement.querySelector('[data-item-id="6"]');
+                const item7 = classifier.dialogElement.querySelector('[data-item-id="7"]');
+                const item8 = classifier.dialogElement.querySelector('[data-item-id="8"]');
+                
+                assert.ok(noneList.contains(item4), 'Bob Williams (4) in none category');
+                assert.ok(noneList.contains(item7), 'Edward Norton (7) in none category');
+                assert.ok(readList.contains(item1), 'John Doe (1) in read category');
+                assert.ok(readList.contains(item2), 'Jane Smith (2) in read category');
+                assert.ok(readList.contains(item8), 'Fiona Apple (8) in read category');
+                assert.ok(writeList.contains(item3), 'Alice Johnson (3) in write category');
+                assert.ok(writeList.contains(item5), 'Charlie Brown (5) in write category');
+                assert.ok(writeList.contains(item6), 'Diana Prince (6) in write category');
+
+                classifier.closeDialog(false);
+            });
+
+            QUnit.test('applyClassification with non-existent classification', function(assert) {
+                const classifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                    savedClassifications: getSavedClassifications()
+                });
+
+                const dialogPromise = classifier.openDialog();
+                dialogPromise.catch(() => {}); // Suppress rejection
+                
+                // Get initial DOM state
+                const initialItems = classifier.dialogElement.querySelectorAll('.oc-item');
+                const initialPositions = Array.from(initialItems).map(item => ({
+                    id: item.dataset.itemId,
+                    category: item.dataset.category,
+                    parent: item.parentElement.dataset.category
+                }));
+                
+                // Try to apply non-existent classification
+                classifier.applyClassification("999");
+                
+                // Check that items remain in original positions
+                const finalItems = classifier.dialogElement.querySelectorAll('.oc-item');
+                const finalPositions = Array.from(finalItems).map(item => ({
+                    id: item.dataset.itemId,
+                    category: item.dataset.category,
+                    parent: item.parentElement.dataset.category
+                }));
+                
+                assert.deepEqual(finalPositions, initialPositions, 'Items remain in original positions after failed classification apply');
+                assert.equal(finalItems.length, initialItems.length, 'No items lost during failed operation');
+
+                classifier.closeDialog(false);
+            });
+        });
+
+        // Dialog Tests
+        QUnit.module('Dialog Functionality', function() {
+            
+            QUnit.test('openDialog creates and shows dialog', function(assert) {
+                const done = assert.async();
+                const classifier = new ocClasificame(getTestCategories(), getTestItems());
+                
+                const dialogPromise = classifier.openDialog({
+                    title: 'Test Dialog'
+                });
+                dialogPromise.catch(() => {}); // Suppress rejection
+                // Check dialog is created and visible
+                assert.ok(classifier.dialogElement, 'Dialog element created');
+                assert.ok(classifier.isOpen, 'Dialog marked as open');
+                assert.equal(classifier.dialogElement.tagName, 'DIALOG', 'Dialog is native HTML dialog element');
+                
+                // Handle the promise rejection immediately to prevent global failure
+                dialogPromise.catch((error) => {
+                    assert.equal(error.message, 'User cancelled', 'Dialog promise rejected with correct message');
+                    assert.notOk(classifier.isOpen, 'Dialog marked as closed');
+                    done();
+                });
+                
+                // Close dialog after a short delay
+                setTimeout(() => {
+                    classifier.closeDialog(false);
+                }, 10);
+            });
+
+            QUnit.test('closeDialog with save returns values', function(assert) {
+                const done = assert.async();
+                const classifier = new ocClasificame(getTestCategories(), getTestItems());
+                
+                const dialogPromise = classifier.openDialog();
+                
+                setTimeout(() => {
+                    classifier.closeDialog(true);
+                    
+                    dialogPromise.then((result) => {
+                        assert.ok(result, 'Dialog resolved with result');
+                        assert.ok(result.none, 'Result contains none category');
+                        assert.ok(result.read, 'Result contains read category');
+                        assert.ok(result.write, 'Result contains write category');
+                        done();
+                    });
+                }, 100);
+            });
+
+            QUnit.test('Dialog title includes read-only indicator', function(assert) {
+                const editableClassifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                    editable: true
+                });
+                const readOnlyClassifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                    editable: false
+                });
+                
+                editableClassifier.openDialog({ title: 'Test' });
+                readOnlyClassifier.openDialog({ title: 'Test' });
+                
+                const editableTitle = editableClassifier.dialogElement.querySelector('.oc-dialog-title').textContent;
+                const readOnlyTitle = readOnlyClassifier.dialogElement.querySelector('.oc-dialog-title').textContent;
+                
+                assert.notOk(editableTitle.includes('Read Only'), 'Editable dialog title does not include Read Only');
+                assert.ok(readOnlyTitle.includes('Read Only'), 'Read-only dialog title includes Read Only indicator');
+                
+                editableClassifier.closeDialog(true);
+                readOnlyClassifier.closeDialog(true);
+            });
+        });
+
+        // Sorting Tests
+        QUnit.module('Sorting Functionality', function() {
+            
+            QUnit.test('_sortItemsInCategory sorts items alphabetically', function(assert) {
+                // Create items with names that will test sorting
+                const unsortedItems = [
+                    {id: 1, name: "Zebra", category: "none"},
+                    {id: 2, name: "Apple", category: "none"},
+                    {id: 3, name: "Banana", category: "none"}
+                ];
+                
+                const classifier = new ocClasificame(getTestCategories(), unsortedItems);
+                const dialogPromise = classifier.openDialog();
+                dialogPromise.catch(() => {}); // Suppress rejection
+                
+                // Sort the 'none' category
+                classifier._sortItemsInCategory('none');
+                
+                // Get the items in the DOM to check their order
+                const noneList = classifier.dialogElement.querySelector('[data-category="none"]');
+                const itemElements = noneList.querySelectorAll('.oc-item .oc-item-label');
+                const itemNames = Array.from(itemElements).map(el => el.textContent);
+                
+                assert.deepEqual(itemNames, ['Apple', 'Banana', 'Zebra'], 'Items sorted alphabetically');
+                
+                classifier.closeDialog(false);
+            });
+        });
+
+        // Edge Cases Tests
+        QUnit.module('Edge Cases', function() {
+            
+            QUnit.test('Empty categories array', function(assert) {
+                assert.throws(() => {
+                    new ocClasificame([], getTestItems());
+                }, 'Constructor should handle empty categories gracefully');
+            });
+
+            QUnit.test('Empty items array', function(assert) {
+                const classifier = new ocClasificame(getTestCategories(), []);
+                
+                assert.ok(classifier instanceof ocClasificame, 'Instance created with empty items');
+                const dialogPromise = classifier.openDialog();
+                dialogPromise.catch(() => {}); // Suppress rejection
+                const values = classifier.getValue();
+                assert.equal(values.none.length, 0, 'None category is empty');
+                assert.equal(values.read.length, 0, 'Read category is empty');
+                assert.equal(values.write.length, 0, 'Write category is empty');
+            });
+
+            QUnit.test('Items with duplicate IDs', function(assert) {
+                const duplicateItems = [
+                    {id: 1, name: "First John", category: "none"},
+                    {id: 1, name: "Second John", category: "read"}
+                ];
+                
+                const classifier = new ocClasificame(getTestCategories(), duplicateItems);
+                const dialogPromise = classifier.openDialog();
+                dialogPromise.catch(() => {}); // Suppress rejection
+                const values = classifier.getValue();
+                
+                // Both items should be processed, but behavior with duplicate IDs may vary
+                assert.ok(values.none.length + values.read.length >= 1, 'At least one item processed');
+            });
+
+            QUnit.test('Missing required option properties', function(assert) {
+                const itemsWithoutId = [
+                    {name: "No ID Item", category: "none"}
+                ];
+                
+                // Should not crash when items don't have the expected ID property
+                assert.throws(() => {
+                    const classifier = new ocClasificame(getTestCategories(), itemsWithoutId);
+
+                    classifier.getValue();
+                }, 'Should handle missing ID properties gracefully');
+            });
+        });
+
+        // Configuration Tests
+        QUnit.module('Configuration Options', function() {
+            
+            QUnit.test('Different valueId and valueDisplay options', function(assert) {
+                const customItems = [
+                    {userId: 'u1', fullName: "User One", permission: "none"},
+                    {userId: 'u2', fullName: "User Two", permission: "read"}
+                ];
+                
+                const classifier = new ocClasificame(getTestCategories(), customItems, {
+                    valueId: 'userId',
+                    valueDisplay: 'fullName',
+                    itemsCategoryIdKey: 'permission'
+                });
+                const dialogPromise = classifier.openDialog();
+                dialogPromise.catch(() => {}); // Suppress rejection
+                const values = classifier.getValue();
+                assert.ok(values.none.includes('u1'), 'Custom valueId works correctly');
+                assert.ok(values.read.includes('u2'), 'Custom valueId works correctly');
+            });
+
+            QUnit.test('showPlantillaMethod and showGroupMethod flags', function(assert) {
+                const classifierBoth = new ocClasificame(getTestCategories(), getTestItems(), {
+                    showPlantillaMethod: true,
+                    showGroupMethod: true
+                });
+                
+                const classifierNeither = new ocClasificame(getTestCategories(), getTestItems(), {
+                    showPlantillaMethod: false,
+                    showGroupMethod: false
+                });
+                
+                const contentBoth = classifierBoth.createContent();
+                const contentNeither = classifierNeither.createContent();
+                
+                assert.ok(contentBoth.includes('oc-classification-manager'), 'Both modes show classification manager');
+                assert.notOk(contentNeither.includes('oc-classification-manager'), 'Neither mode hides classification manager');
+            });
+        });
+
+        // Integration Tests
+        QUnit.module('Integration Tests', function() {
+            
+            QUnit.test('Complete workflow: open, modify, save', function(assert) {
+                const done = assert.async();
+                const classifier = new ocClasificame(getTestCategories(), getTestItems());
+                
+                const dialogPromise = classifier.openDialog({
+                    title: 'Integration Test'
+                });
+                
+                // Simulate user interactions
+                setTimeout(() => {
+                    // Move some items
+                    classifier._moveItemTo('1', 'write');
+                    classifier._moveItemTo('2', 'none');
+                    
+                    // Search for something
+                    classifier.search('Alice');
+                    
+                    // Clear search
+                    classifier.search('');
+                    
+                    // Save and close
+                    classifier.closeDialog(true);
+                    
+                    dialogPromise.then((result) => {
+                        assert.ok(result.write.includes('1'), 'Item 1 moved to write category');
+                        assert.ok(result.none.includes('2'), 'Item 2 moved to none category');
+                        done();
+                    });
+                }, 100);
+            });
+
+            QUnit.test('Read-only mode prevents modifications', function(assert) {
+                const classifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                    editable: false
+                });
+
+                const dialogPromise = classifier.openDialog();
+                dialogPromise.catch(() => {}); // Suppress rejection
+                
+                // Try to move item (should be ignored in read-only mode)
+                const originalValues = JSON.stringify(classifier.getValue());
+                classifier._moveItemTo('1', 'write');
+                const newValues = JSON.stringify(classifier.getValue());
+                
+                assert.equal(originalValues, newValues, 'Values unchanged in read-only mode');
+                
+                classifier.closeDialog(false);
+            });
+        });
+
+    </script>
+</body>
+</html>

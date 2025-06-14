@@ -43,11 +43,11 @@ class ocClasificame {
             title: 'Classification',
             que_clasifica: 'producto',
             que_clasifica_label: 'Items',
-            
+
             valueId: 'id',
             valueDisplay: 'name',
-            valueColumnKey: 'category',
-            
+            itemsCategoryIdKey: 'category',
+
             editable: true,
             showToolbar: true,
             savedClassifications: [],
@@ -65,6 +65,7 @@ class ocClasificame {
                 deleteGroup: '/api/groups/delete' // CRUD: Delete a group
             },
             debug:false,
+            unassignedDefaultTo: null, // Default category ID for items with invalid categories
             ...options
         };
 
@@ -73,7 +74,9 @@ class ocClasificame {
         this.dialogElement = null;
         this.isOpen = false;
         this.selectedGroupItems = [];
-        
+
+        this.options.unassignedDefaultTo = this._getDefaultCategoryId();
+
         this._initializeValues();
 
         this.isClosingProgrammatically = false; // Flag for native dialog closeDialog handling
@@ -112,17 +115,14 @@ class ocClasificame {
             </div>
         `;
     }
-    
+
     getValue() {
         const result = {};
-        let defaultCategoryId;
         this.categories.forEach(category => {
             result[category.id] = [];
-            if(typeof defaultCategoryId === 'undefined')
-                defaultCategoryId = category.id;
         });
 
-        console.log("editable getValues dflt", defaultCategoryId)
+        const defaultCategoryId = this._getDefaultCategoryId();
         const items = this.dialogElement.querySelectorAll('.oc-item');
         items.forEach(item => {
             const itemId = item.dataset.itemId;
@@ -136,30 +136,28 @@ class ocClasificame {
         });
         return result;
     }
-    
+
     openDialog(dialogOptions = {}) {
         return new Promise((resolve, reject) => {
             this.resolve = resolve;
             this.reject = reject;
-            
+
             this._createDialog(dialogOptions);
-            
+
             // Only setup sortable if editable
             if(this.options.editable) {
                 this._setupSortable();
             }
-            
+
             this._setupEventListeners();
             this._updateCounters();
-            
+
             this.isOpen = true;
-            // this.dialogElement.classList.add('openDialog'); // Replaced by showModal()
 
             if(this.dialogElement.tagName === 'DIALOG') {
-                console.log("____________ soy un dialogo");
                 this.dialogElement.showModal();
                 // Add a 'closeDialog' event listener to handle native dialog closeDialog (e.g., Escape key)
-                this.dialogElement.addEventListener('closeDialog', () => {
+                this.dialogElement.addEventListener('close', () => {
                     if(!this.isClosingProgrammatically) {
                         // If the dialog was closed by native means (e.g., Escape key),
                         // we need to ensure our internal state and cleanup are handled.
@@ -172,7 +170,7 @@ class ocClasificame {
             }
         });
     }
-    
+
     closeDialog(save = false) {
         this.isClosingProgrammatically = true; // Set flag
 
@@ -189,7 +187,7 @@ class ocClasificame {
         this.sortableInstances = [];
 
         if(this.dialogElement) {
-            if(this.dialogElement.tagName === 'DIALOG' && this.dialogElement.openDialog) {
+            if(this.dialogElement.tagName === 'DIALOG' && this.dialogElement.open) {
                 this.dialogElement.close(); // Native dialog closeDialog
             }
             this.dialogElement.remove(); // Remove from DOM
@@ -199,8 +197,9 @@ class ocClasificame {
         this.isOpen = false;
         this.isClosingProgrammatically = false; // Reset flag
     }
-    
+
     search(searchTerm) {
+
         const items = this.dialogElement.querySelectorAll('.oc-item');
         const normalizedSearch = searchTerm.toLowerCase().trim();
 
@@ -212,7 +211,18 @@ class ocClasificame {
 
         this._updateCounters();
     }
-    
+
+    // Helper method to get the default category ID
+    _getDefaultCategoryId() {
+        if(this.options.unassignedDefaultTo === null) {
+            return this.categories[0].id;
+        }
+        for(let cat of this.categories)
+            if(cat.id == this.options.unassignedDefaultTo)
+                return this.options.unassignedDefaultTo;
+        return this.categories[0].id;
+    }
+
     _initializeValues() {
         this.categories.forEach(cat => {
             this.currentValues[cat.id] = [];
@@ -223,15 +233,17 @@ class ocClasificame {
             console.error("ocClasificame: No categories defined. Cannot initialize values.");
             return; // Cannot proceed without categories
         }
-        const defaultCategoryId = this.categories[0].id; // Define default category ID once
+
+        // Get the default category ID
+        const defaultCategoryId = this._getDefaultCategoryId();
 
         this.items.forEach(item => {
-            let assignedCategoryId = item[this.options.valueColumnKey];
+            let assignedCategoryId = item[this.options.itemsCategoryIdKey];
 
             // Check if the item's category is missing, null, undefined, 
             // or not a valid initialized category ID.
             if(!assignedCategoryId || !this.currentValues.hasOwnProperty(assignedCategoryId)) {
-                item[this.options.valueColumnKey] = defaultCategoryId; // Update the item's actual category property
+                item[this.options.itemsCategoryIdKey] = defaultCategoryId; // Update the item's actual category property
                 assignedCategoryId = defaultCategoryId; // Use the default category for pushing
             }
 
@@ -250,16 +262,16 @@ class ocClasificame {
             }
         });
     }
-    
+
     _createDialog(dialogOptions) {
         const defaultOptions = {
             title: this.options.title,
             width: '95vw',
             height: '85vh'
         };
-        
+
         const opts = { ...defaultOptions, ...dialogOptions };
-        
+
         // Modify footer buttons based on editable state
         const footerButtonsHTML = this.options.editable 
             ? `<button class="oc-btn oc-btn-secondary" data-action="cancel">Cancel</button>
@@ -269,12 +281,12 @@ class ocClasificame {
 
         this.dialogElement = document.createElement('dialog');
         this.dialogElement.className = 'oc-dialog';
-        
+
         // Add read-only class if not editable
         if(!this.options.editable) {
             this.dialogElement.classList.add('oc-readonly');
         }
-        
+
         this.dialogElement.innerHTML = `
             <div class="oc-dialog-content">
                 <div class="oc-dialog-header">
@@ -289,10 +301,10 @@ class ocClasificame {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(this.dialogElement);
     }
-    
+
     _dragDropColumns() {
         return this.categories.map((category, index) => {
             const isFirst = index === 0;
@@ -347,7 +359,7 @@ class ocClasificame {
              <button class="oc-manager-btn save" id="edit-classification">Edit</button>
              <button class="oc-manager-btn save" id="del-classification">Del</button>
              ` : '';
-        
+
         return `
             <div class="oc-classification-manager">
                 <div class="oc-manager-group">
@@ -389,7 +401,7 @@ class ocClasificame {
                             ${categoryOptions}
                         </select>
                     </div>
-                    
+
                     <div class="oc-group-control">
                         <label>&nbsp;</label>
                         <button class="oc-group-btn" id="apply-group-classification" disabled>¡Ponlos!</button>
@@ -404,16 +416,19 @@ class ocClasificame {
     }
 
     _createItemsHTML(categoryId) {
+        // Get the default category ID
+        const defaultCategoryId = this._getDefaultCategoryId();
+
         const categoryItems = this.items.filter(item => {
-            const itemCategory = item[this.options.valueColumnKey] || this.categories[0].id;
+            const itemCategory = item[this.options.itemsCategoryIdKey] || defaultCategoryId;
             return itemCategory === categoryId;
         });
-        
+
         return categoryItems.map(item => {
             const itemId = item[this.options.valueId];
             const itemLabel = item[this.options.valueDisplay];
-            const currentCategory = item[this.options.valueColumnKey] || this.categories[0].id;
-            
+            const currentCategory = item[this.options.itemsCategoryIdKey] || defaultCategoryId;
+
             // Hide toolbar if not editable or showToolbar is false
             const toolbarHTML = this.options.editable && this.options.showToolbar ? `
                 <div class="oc-item-toolbar">
@@ -426,10 +441,10 @@ class ocClasificame {
                     `).join('')}
                 </div>
             ` : '';
-            
+
             // Add read-only class if not editable
             const itemClass = this.options.editable ? 'oc-item' : 'oc-item oc-item-readonly';
-            
+
             return `
                 <div class="${itemClass}" data-item-id="${itemId}" data-category="${currentCategory}">
                     <span class="oc-item-label">${itemLabel}</span>
@@ -438,13 +453,13 @@ class ocClasificame {
             `;
         }).join('');
     }
-    
+
     _setupSortable() {
         if(!this.options.editable)
             return;
-        
+
         const lists = this.dialogElement.querySelectorAll('.oc-items-list');
-        
+
         lists.forEach(list => {
             const sortable = new Sortable(list, {
                 group: 'clasificame-items',
@@ -458,49 +473,49 @@ class ocClasificame {
                 swapThreshold: 0.65,
                 ghostClass: 'sortable-ghost',
                 chosenClass: 'sortable-chosen',
-                
+
                 onStart: (evt) => {
                     document.body.style.cursor = 'grabbing';
                 },
-                
+
                 onEnd: (evt) => {
                     document.body.style.cursor = '';
-                    
+
                     const item = evt.item;
                     const newCategory = evt.to.dataset.category;
                     const itemId = item.dataset.itemId;
-                    
+
                     item.dataset.category = newCategory;
                     this._updateItemToolbar(item, newCategory);
                     this._updateCounters();
-                    
+
                     const originalItem = this.items.find(i => i[this.options.valueId] == itemId);
                     if(originalItem) {
-                        originalItem[this.options.valueColumnKey] = newCategory;
+                        originalItem[this.options.itemsCategoryIdKey] = newCategory;
                     }
                 }
             });
-            
+
             this.sortableInstances.push(sortable);
         });
     }
-    
+
     _setupEventListeners() {
         this.dialogElement.querySelector('.oc-dialog-close').addEventListener('click', () => {
             this.closeDialog(false);
         });
-        
+
         // Handle different button types based on editable state
         if(this.options.editable) {
             const cancelBtn = this.dialogElement.querySelector('[data-action="cancel"]');
             const saveBtn = this.dialogElement.querySelector('[data-action="save"]');
-            
+
             if(cancelBtn) {
                 cancelBtn.addEventListener('click', () => {
                     this.closeDialog(false);
                 });
             }
-            
+
             if(saveBtn) {
                 saveBtn.addEventListener('click', () => {
                     this.closeDialog(true);
@@ -521,32 +536,12 @@ class ocClasificame {
             if(this.options.showGroupMethod)
                 this._setupGroupModeListeners();
         }
-        
 
-        
+
+
         // Click-outside-to-closeDialog for native <dialog>
-        if(this.dialogElement.tagName === 'DIALOG') {
-            this.dialogElement.addEventListener('click', (event) => {
-                if(event.target === this.dialogElement) { // Ensures the click is on the dialog element itself
-                    const rect = this.dialogElement.getBoundingClientRect();
-                    // Check if the click coordinates are outside the dialog's visual bounds
-                    const isInDialog = (
-                        rect.top <= event.clientY && event.clientY <= rect.top + rect.height &&
-                        rect.left <= event.clientX && event.clientX <= rect.left + rect.width
-                    );
-                    if(!isInDialog) {
-                        this.closeDialog(false); // Click was on the backdrop
-                    }
-                }
-            });
-        } else {
-            // Fallback for the old div-based dialog (if ever reverted or for other components)
-            this.dialogElement.addEventListener('click', (e) => {
-                if(e.target === this.dialogElement) {
-                    this.closeDialog(false);
-                }
-            });
-        }
+
+
 
         // Centralized sort button listener
         if(this.options.editable) { // Sort is an edit operation
@@ -564,7 +559,7 @@ class ocClasificame {
         // Setup search listeners regardless of edit mode, as search is a read-only action
         this._setupSearchEventListeners();
     }
-    
+
     _setupSearchEventListeners() {
         const globalSearchInput = this.dialogElement.querySelector('.oc-search-input');
         if(globalSearchInput) {
@@ -581,12 +576,12 @@ class ocClasificame {
             }
         }
     }
-    
+
     _setupPlantillaModeListeners() {
         if(!this.options.editable) return; // Keep this guard for other editable actions
-        
+
         // Search listeners moved to _setupSearchEventListeners / _setupEventListeners
-        
+
         this.dialogElement.addEventListener('click', (e) => {
             if(e.target.classList.contains('oc-item-btn')) {
                 e.preventDefault();
@@ -596,7 +591,7 @@ class ocClasificame {
                 this._moveItemTo(itemId, targetCategory);
             }
         });
-        
+
         this.dialogElement.addEventListener('click', (e) => {
             if(e.target.closest('.oc-nav-btn')) {
                 const btn = e.target.closest('.oc-nav-btn');
@@ -605,12 +600,12 @@ class ocClasificame {
                 this._moveVisibleItems(fromCategory, toCategory);
             }
         });
-        
+
         if(this.options.canSavePlantillaMethod || this.options.savedClassifications.length > 0) {
             this._setupPlantillaManager();
         }
     }
-    
+
     _setupGroupModeListeners() {
         if(this.options.crudGroupMethod) { // Check if the feature is enabled
             const manageGroupsBtn = this.dialogElement.querySelector('#oc-manage-groups-btn');
@@ -631,12 +626,12 @@ class ocClasificame {
                         crudGroupMethod: false, // CRITICAL: Prevent recursion
                         valueId: 'id',
                         valueDisplay: 'name',
-                        valueColumnKey: 'category',
+                        itemsCategoryIdKey: 'category',
                         // dialogClass: 'oc-child-clasificame-dialog' // Optional: for different styling
                     };
 
                     const groupMgmtInstance = new ocClasificame(groupManagementCategories, this.items, childInstanceOptions);
-                    
+
                     const compositeGroupName = prompt("Nombre del grupo:");
                     if(!compositeGroupName || compositeGroupName.trim() === '') {
                         alert("Nombre es requerido");
@@ -647,7 +642,7 @@ class ocClasificame {
                     groupMgmtInstance.openDialog({ title: `Define Composite Group: ${compositeGroupName}` }) // Pass dynamic title
                         .then(result => {
                             const selectedBaseGroupIds = result.selected_groups || [];
-                            
+
                             if(selectedBaseGroupIds && selectedBaseGroupIds.length > 0) {
                                 const newCompositeGroup = {
                                     id: `composite_${Date.now()}`,
@@ -658,13 +653,13 @@ class ocClasificame {
                                     isComposite: true,
                                     baseGroupIds: selectedBaseGroupIds 
                                 };
-                            
+
                                 // Add to the parent instance's groups array
                                 if(!this.options.groups) {
                                     this.options.groups = [];
                                 }
                                 this.options.groups.push(newCompositeGroup);
-                            
+
                                 alert(`Composite group '${compositeGroupName}' saved successfully with ${selectedBaseGroupIds.length} base group(s).`);
 
                             } else {
@@ -678,16 +673,16 @@ class ocClasificame {
                 });
             }
         }
-        
+
         const groupSelector = this.dialogElement.querySelector('#group-selector');
         const targetSelector = this.dialogElement.querySelector('#group-target');
         const applyBtn = this.dialogElement.querySelector('#apply-group-classification');
-        
+
         if(!groupSelector || !targetSelector || !applyBtn) {
             console.error('Group mode elements not found');
             return;
         }
-        
+
         groupSelector.addEventListener('change', async (e) => {
             const groupId = e.target.value;
             if(groupId) {
@@ -700,13 +695,13 @@ class ocClasificame {
                 applyBtn.disabled = true;
             }
         });
-        
+
         targetSelector.addEventListener('change', (e) => {
             const hasGroup = groupSelector.value;
             const hasTarget = e.target.value;
             applyBtn.disabled = !hasGroup || !hasTarget;
         });
-        
+
         applyBtn.addEventListener('click', () => {
             const groupId = groupSelector.value;
             const targetCategory = targetSelector.value;
@@ -724,7 +719,7 @@ class ocClasificame {
                 this._moveItemTo(itemId, targetCategory);
             }
         });
-        
+
         this.dialogElement.addEventListener('click', (e) => {
             if(e.target.closest('.oc-nav-btn')) {
                 const btn = e.target.closest('.oc-nav-btn');
@@ -733,7 +728,7 @@ class ocClasificame {
                 this._moveVisibleItems(fromCategory, toCategory);
             }
         });
-        
+
         this._updateCounters();
     }
 
@@ -743,19 +738,29 @@ class ocClasificame {
             btn.classList.toggle('pressed', btn.dataset.target === newCategory);
         });
     }
-    
+
     _moveItemTo(itemId, targetCategory, showFeedback = true) {
         if(!this.options.editable) return;
-        
+
+        // If dialogElement is null, just update the item's category in the data model
+        if (!this.dialogElement) {
+            // Find the item in the items array and update its category
+            const item = this.items.find(i => i[this.options.valueId].toString() === itemId.toString());
+            if (item) {
+                item[this.options.itemsCategoryIdKey] = targetCategory;
+            }
+            return;
+        }
+
         const item = this.dialogElement.querySelector(`[data-item-id="${itemId}"]`);
         const targetList = this.dialogElement.querySelector(`[data-category="${targetCategory}"]`);
-        
+
         if(item && targetList && item.dataset.category !== targetCategory) {
             item.dataset.category = targetCategory;
             this._updateItemToolbar(item, targetCategory);
             targetList.appendChild(item);
             this._updateCounters();
-            
+
             if(showFeedback) {
                 item.style.transform = 'scale(1.05)';
                 setTimeout(() => {
@@ -764,35 +769,36 @@ class ocClasificame {
             }
         }
     }
-    
+
     _moveVisibleItems(fromCategory, toCategory) {
         if(!this.options.editable) return;
-        
+
+
         const fromList = this.dialogElement.querySelector(`.oc-items-list[data-category="${fromCategory}"]`);
         const toList = this.dialogElement.querySelector(`.oc-items-list[data-category="${toCategory}"]`);
-        
+
         if(!fromList || !toList) return;
-        
+
         const visibleItems = fromList.querySelectorAll('.oc-item:not([style*="display: none"])');
-        
+
         visibleItems.forEach(item => {
             item.dataset.category = toCategory;
             this._updateItemToolbar(item, toCategory);
             toList.appendChild(item);
         });
-        
+
         this._updateCounters();
     }
-    
+
     _setupPlantillaManager() {
         if(!this.options.editable) return;
-        
+
         const loadSelect = this.dialogElement.querySelector('#load-classification');
         const descriptionDiv = this.dialogElement.querySelector('#classification-description');
         const applyBtn = this.dialogElement.querySelector('#apply-classification');
-        
+
         if(!loadSelect || !descriptionDiv || !applyBtn) return;
-        
+
         loadSelect.addEventListener('change', (e) => {
             const selectedOption = e.target.selectedOptions[0];
             if(selectedOption && selectedOption.value) {
@@ -804,14 +810,14 @@ class ocClasificame {
                 applyBtn.disabled = true;
             }
         });
-        
+
         const saveBtn = this.dialogElement.querySelector('#save-classification');
         if(saveBtn) {
             saveBtn.addEventListener('click', () => {
                 this.saveClassification();
             });
         }
-        
+
         applyBtn.addEventListener('click', () => {
             const selectedId = loadSelect.value;
             if(selectedId) {
@@ -819,23 +825,23 @@ class ocClasificame {
             }
         });
     }
-    
+
     async saveClassification() {
         if(!this.options.editable) return;
-        
+
         const nameInput = this.dialogElement.querySelector('#save-name');
         const descriptionInput = this.dialogElement.querySelector('#save-description');
-        
+
         const name = nameInput.value.trim();
         const description = descriptionInput.value.trim();
-        
+
         if(!name) {
             alert('Please enter a name for the classification');
             return;
         }
-        
+
         const currentClassification = this.getValue();
-        
+
         const saveData = {
             name: name,
             description: description,
@@ -850,34 +856,33 @@ class ocClasificame {
                 alert(`Classification "${name}" saved successfully!`);
                 nameInput.value = '';
                 descriptionInput.value = '';
-                
+
                 this.options.savedClassifications.push({
                     id: Date.now().toString(),
                     name: name,
                     description: description,
                     classification: currentClassification
                 });
-                
+
                 this.refreshLoadDropdown();
             }, 500);
-            
+
         } catch (error) {
             console.error('Error saving classification:', error);
             alert('Error saving classification. Please try again.');
         }
     }
-    
+
     async applyClassification(classificationId) {
         if(!this.options.editable) return;
-        
+
         const savedClassification = this.options.savedClassifications.find(c => c.id === classificationId);
-        
+
         if(!savedClassification) {
-            alert('Classification not found');
             return;
         }
         const currentItemIds = new Set(this.items.map(item => item[this.options.valueId].toString()));
-        
+
         Object.entries(savedClassification.classification).forEach(([categoryId, itemIds]) => {
             itemIds.forEach(itemId => {
                 if(currentItemIds.has(itemId.toString())) {
@@ -885,37 +890,37 @@ class ocClasificame {
                 }
             });
         });
-        
+
         this._updateCounters();
     }
-    
+
     refreshLoadDropdown() {
         const loadSelect = this.dialogElement.querySelector('#load-classification');
         if(loadSelect) {
             const savedOptions = this.options.savedClassifications.map(classification => 
                 `<option value="${classification.id}" data-description="${classification.description}">${classification.name}</option>`
             ).join('');
-            
+
             loadSelect.innerHTML = `
                 <option value="">Select a saved classification...</option>
                 ${savedOptions}
             `;
         }
     }
-    
+
     async loadGroupItems(groupId) {
-        console.log(`Loading items for group: ${groupId}`);
-        
+
+
         try {
             const mockGroupItems = this.getMockGroupItems(groupId);
             this.selectedGroupItems = mockGroupItems;
-            console.log('Loaded group items:', this.selectedGroupItems);
+
         } catch (error) {
             console.error('Error loading group items:', error);
             this.selectedGroupItems = [];
         }
     }
-    
+
     getMockGroupItems(groupId) {
         const groupData = {
             'admin': [
@@ -934,17 +939,17 @@ class ocClasificame {
                 {id: 8, name: "Fiona Apple", category: "read"}
             ]
         };
-        
+
         return groupData[groupId] || [];
     }
-    
+
     clearGroupItems() {
         this.selectedGroupItems = [];
     }
-    
+
     applyGroupClassification(groupId, targetCategory) {
         if(!this.options.editable) return;
-        
+
         if(!this.selectedGroupItems.length) {
             alert('No items in selected group');
             return;
@@ -954,34 +959,38 @@ class ocClasificame {
         this.selectedGroupItems.forEach(item => {
             const originalItem = this.items.find(i => i[this.options.valueId] == item.id);
             if(originalItem) {
-                originalItem[this.options.valueColumnKey] = targetCategory;
+                originalItem[this.options.itemsCategoryIdKey] = targetCategory;
                 this._moveItemTo(item.id, targetCategory, false);
                 movedCount++;
             }
         });
-        
+
         if(movedCount > 0) {
             this._updateCounters();
         } else {
             alert('No items were found to update');
         }
-        
-        const groupSelector = this.dialogElement.querySelector('#group-selector');
-        const targetSelector = this.dialogElement.querySelector('#group-target');
-        const applyBtn = this.dialogElement.querySelector('#apply-group-classification');
-        
-        if(groupSelector) groupSelector.value = '';
-        if(targetSelector) {
-            targetSelector.value = '';
-            targetSelector.disabled = true;
+
+        // Update UI elements only if dialogElement exists
+        if (this.dialogElement) {
+            const groupSelector = this.dialogElement.querySelector('#group-selector');
+            const targetSelector = this.dialogElement.querySelector('#group-target');
+            const applyBtn = this.dialogElement.querySelector('#apply-group-classification');
+
+            if(groupSelector) groupSelector.value = '';
+            if(targetSelector) {
+                targetSelector.value = '';
+                targetSelector.disabled = true;
+            }
+            if(applyBtn) applyBtn.disabled = true;
         }
-        if(applyBtn) applyBtn.disabled = true;
-        
+
         this.clearGroupItems();
     }
 
-    
+
     _updateCounters() {
+
         this.categories.forEach(category => {
             const list = this.dialogElement.querySelector(`.oc-items-list[data-category="${category.id}"]`);
             const counter = this.dialogElement.querySelector(`.oc-counter[data-category="${category.id}"] .count`);
@@ -1004,7 +1013,7 @@ class ocClasificame {
 
 
     _sortItemsInCategory(categoryId) {
-        if(!this.options.editable || !this.dialogElement) return;
+        if(!this.options.editable) return;
 
         const itemList = this.dialogElement.querySelector(`.oc-items-list[data-category="${categoryId}"]`);
         if(!itemList) {

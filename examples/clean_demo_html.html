@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ocClasificame Demo - Complete with Read-Only Support</title>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <!-- Link to your external CSS file -->
-    <link rel="stylesheet" href="oc_clasificame.css">
+    <link rel="stylesheet" href="../src/oc_clasificame.css">
     <!-- Link to your external JavaScript file -->
-    <script src="oc_clasificame.js"></script>
+    <script src="../src/oc_clasificame.js"></script>
     <style>
         /* Additional demo-specific styles */
         .demo-container {
@@ -75,7 +75,7 @@
 <body>
     <div class="demo-container">
         <h1 class="demo-title">ocClasificame Demo - Complete with Read-Only Support</h1>
-        
+
         <div class="demo-section">
             <h3>Editable Modes</h3>
             <p>These modes allow full interaction - dragging, clicking, saving, and modifying classifications.</p>
@@ -83,31 +83,32 @@
             <button class="demo-btn" onclick="openGroupOnly()">Group Method Only</button>
             <button class="demo-btn" onclick="openIndividualWithEdit()">Individual with add</button>
         </div>
-        
+
         <div class="demo-section">
             <h3>Read-Only Modes</h3>
             <p>These modes display the classification in read-only format. No dragging, no editing, no saving - perfect for viewing existing classifications.</p>
             <button class="demo-btn readonly" onclick="openReadOnlyMode()">Read-Only View</button>
             <button class="demo-btn readonly" onclick="openReadOnlyWithData()">Read-Only with Pre-classified Data</button>
         </div>
-        
+
         <div class="demo-section">
             <h3>Edge Cases</h3>
             <p>Test scenarios for validation and edge case handling.</p>
             <button class="demo-btn" onclick="openNeither()">Neither Method (Fallback to Individual)</button>
             <button class="demo-btn readonly" onclick="openReadOnlyNoToolbar()">Read-Only without Toolbar</button>
+            <button class="demo-btn" onclick="testUnassignedDefaultTo()">Test unassignedDefaultTo Option</button>
         </div>
     </div>
-    
 
-    
+
+
     <script>
         const permissions = [
             {id: 'none', label: 'X', title: 'No Permission'},
             {id: 'read', label: 'RO', title: 'Read Only'},
             {id: 'write', label: 'RW', title: 'Read/Write'}
         ];
-        
+
         const users = [
             {id: 1, name: "John Doe", category: "none"},
             {id: 2, name: "Jane Smith", category: "read"},
@@ -116,9 +117,12 @@
             {id: 5, name: "Charlie Brown", category: "read"},
             {id: 6, name: "Diana Prince", category: "write"},
             {id: 7, name: "Edward Norton", category: "none"},
-            {id: 8, name: "Fiona Apple", category: "read"}
+            {id: 8, name: "Fiona Apple", category: "read"},
+            {id: "snicat", name: "Sin cat", },
+            {id: "nullcat", name: "null cat", category:null},
+            {id: "invalid", name: "invalid cat", category:"OTRO TEMA"},
         ];
-        
+
         const savedClassifications = [
             {
                 id: "1",
@@ -141,7 +145,7 @@
                 }
             }
         ];
-        
+
         const sampleGroups = [
             {
                 id: 'admin',
@@ -162,7 +166,7 @@
                 description: 'Department managers and supervisors'
             }
         ];
-        
+
         // EDITABLE MODES
         async function openIndividualOnly() {
             const userCategories = new ocClasificame(permissions, users, {
@@ -179,20 +183,20 @@
                 crudGroupMethod: false,
                 groups: sampleGroups
             });
-            
+
             try {
                 const result = await userCategories.openDialog({
                     title: 'Individual Classification Only'
                 });
-                
+
                 console.log('Classification saved successfully!');
                 console.log('Results:', result);
-                
+
             } catch (error) {
                 console.log('Classification cancelled:', error.message);
             }
         }
-        
+
         async function openGroupOnly() {
             const userCategories = new ocClasificame(permissions, users, {
                 title: 'User Permission Classification',
@@ -208,20 +212,20 @@
                 crudGroupMethod:true,
                 groups: sampleGroups
             });
-            
+
             try {
                 const result = await userCategories.openDialog({
                     title: 'Group Classification Only'
                 });
-                
+
                 console.log('Classification saved successfully!');
                 console.log('Results:', result);
-                
+
             } catch (error) {
                 console.log('Classification cancelled:', error.message);
             }
         }
-        
+
         async function openIndividualWithEdit() {
             const userCategories = new ocClasificame(permissions, users, {
                 title: 'User Permission Classification',
@@ -237,20 +241,20 @@
                 crudGroupMethod: false,
                 groups: sampleGroups,
             });
-            
+
             try {
                 const result = await userCategories.openDialog({
                     title: 'Both Methods Available'
                 });
-                
+
                 console.log('Classification saved successfully!');
                 console.log('Results:', result);
-                
+
             } catch (error) {
                 console.log('Classification cancelled:', error.message);
             }
         }
-        
+
         // READ-ONLY MODES
         async function openReadOnlyMode() {
             const userCategories = new ocClasificame(permissions, users, {
@@ -267,19 +271,19 @@
                 crudGroupMethod: false,
                 groups: sampleGroups
             });
-            
+
             try {
                 const result = await userCategories.openDialog({
                     title: 'Read-Only Classification View'
                 });
-                
+
                 console.log('Dialog closed (read-only mode)');
-                
+
             } catch (error) {
                 console.log('Dialog closed:', error.message);
             }
         }
-        
+
         async function openReadOnlyWithData() {
             // Pre-classify some users for demonstration
             const preclassifiedUsers = [
@@ -292,7 +296,7 @@
                 {id: 7, name: "Edward Norton", category: "none"},
                 {id: 8, name: "Fiona Apple", category: "read"}
             ];
-            
+
             const userCategories = new ocClasificame(permissions, preclassifiedUsers, {
                 title: 'User Permission Classification',
                 valueId: 'id',
@@ -307,19 +311,19 @@
                 crudGroupMethod: false,
                 groups: sampleGroups
             });
-            
+
             try {
                 const result = await userCategories.openDialog({
                     title: 'Read-Only View with Pre-classified Data'
                 });
-                
+
                 console.log('Dialog closed (read-only mode)');
-                
+
             } catch (error) {
                 console.log('Dialog closed:', error.message);
             }
         }
-        
+
         async function openReadOnlyNoToolbar() {
             const userCategories = new ocClasificame(permissions, users, {
                 title: 'User Permission Classification',
@@ -335,19 +339,19 @@
                 crudGroupMethod: false,
                 groups: []
             });
-            
+
             try {
                 const result = await userCategories.openDialog({
                     title: 'Read-Only View without Toolbar'
                 });
-                
+
                 console.log('Dialog closed (read-only mode)');
-                
+
             } catch (error) {
                 console.log('Dialog closed:', error.message);
             }
         }
-        
+
         // EDGE CASES
         async function openNeither() {
             const userCategories = new ocClasificame(permissions, users, {
@@ -364,15 +368,84 @@
                 crudGroupMethod: false,
                 groups: sampleGroups
             });
-            
+
             try {
                 const result = await userCategories.openDialog({
                     title: 'Fallback to Individual (Both Methods Disabled)'
                 });
-                
+
                 console.log('Classification saved successfully!');
                 console.log('Results:', result);
-                
+
+            } catch (error) {
+                console.log('Classification cancelled:', error.message);
+            }
+        }
+
+        // TEST FOR unassignedDefaultTo OPTION
+        async function testUnassignedDefaultTo() {
+            // Define categories
+            const testCategories = [
+                {id: 'category1', label: 'C1', title: 'Category 1'},
+                {id: 'category2', label: 'C2', title: 'Category 2'},
+                {id: 'category3', label: 'C3', title: 'Category 3'}
+            ];
+
+            // Create test items with some having invalid categories
+            const testItems = [
+                {id: 1, name: "Item with valid category", category: "category1"},
+                {id: 2, name: "Item with another valid category", category: "category2"},
+                {id: 3, name: "Item with invalid category", category: "invalid_category"},
+                {id: 4, name: "Item with null category", category: null},
+                {id: 5, name: "Item with undefined category", category: undefined},
+                {id: 6, name: "Item with empty string category", category: ""}
+            ];
+
+            // First test: Without unassignedDefaultTo (should default to first category)
+            console.log("TEST 1: Without unassignedDefaultTo option");
+            const classifier1 = new ocClasificame(testCategories, testItems, {
+                title: 'Test Without unassignedDefaultTo',
+                valueId: 'id',
+                valueDisplay: 'name',
+                valueColumnKey: 'category',
+                editable: true,
+                showToolbar: true
+            });
+
+            try {
+                const result1 = await classifier1.openDialog({
+                    title: 'Test Without unassignedDefaultTo'
+                });
+
+                console.log('Classification saved successfully!');
+                console.log('Results (without unassignedDefaultTo):', result1);
+                console.log('Items with invalid categories should be in category1');
+
+                // Second test: With unassignedDefaultTo set to category3
+                console.log("\nTEST 2: With unassignedDefaultTo set to category3");
+                const classifier2 = new ocClasificame(testCategories, testItems, {
+                    title: 'Test With unassignedDefaultTo',
+                    valueId: 'id',
+                    valueDisplay: 'name',
+                    valueColumnKey: 'category',
+                    editable: true,
+                    showToolbar: true,
+                    unassignedDefaultTo: 'category3'
+                });
+
+                try {
+                    const result2 = await classifier2.openDialog({
+                        title: 'Test With unassignedDefaultTo = category3'
+                    });
+
+                    console.log('Classification saved successfully!');
+                    console.log('Results (with unassignedDefaultTo):', result2);
+                    console.log('Items with invalid categories should be in category3');
+
+                } catch (error) {
+                    console.log('Classification cancelled:', error.message);
+                }
+
             } catch (error) {
                 console.log('Classification cancelled:', error.message);
             }
