@@ -14,7 +14,7 @@ body {
 dialog.oc-dialog {
     /* Remove properties handled by native dialog or no longer applicable */
     /* position: fixed; top: 0; left: 0; width: 100%; height: 100%; */ /* Handled by ::backdrop and native centering */
-    /* display: none; */ /* Visibility handled by showModal()/close() */
+    /* display: none; */ /* Visibility handled by showModal()/closeDialog() */
     /* align-items: center; justify-content: center; */ /* Native dialog is centered by default */
     
     /* Make the dialog itself a transparent container for oc-dialog-content */
@@ -31,7 +31,7 @@ dialog.oc-dialog::backdrop {
     background: rgba(0, 0, 0, 0.6);
 }
 
-/* .oc-dialog.open is no longer needed as visibility is handled by the <dialog> element state */
+/* .oc-dialog.openDialog is no longer needed as visibility is handled by the <dialog> element state */
 
 .oc-dialog-content {
     background: white;
@@ -357,8 +357,6 @@ dialog.oc-dialog::backdrop {
     border-top: 1px solid #e0e0e0;
     flex-wrap: wrap;
     gap: 8px;
-    /* Ensure items are vertically centered if wrapping occurs or heights differ */
-    align-items: center; 
 }
 
 .oc-nav-btn {

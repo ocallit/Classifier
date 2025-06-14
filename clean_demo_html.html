@@ -10,7 +10,8 @@
     
     <!-- Link to your external CSS file -->
     <link rel="stylesheet" href="oc_clasificame.css">
-    
+    <!-- Link to your external JavaScript file -->
+    <script src="oc_clasificame.js"></script>
     <style>
         /* Additional demo-specific styles */
         .demo-container {
@@ -98,8 +99,7 @@
         </div>
     </div>
     
-    <!-- Link to your external JavaScript file -->
-    <script src="oc_clasificame.js"></script>
+
     
     <script>
         const permissions = [
@@ -173,15 +173,15 @@
                 editable: true,
                 showToolbar: true,
                 savedClassifications: savedClassifications,
-                showIndividualMethod: true,
-                canSaveIndividualMethod: false,
+                showPlantillaMethod: true,
+                canSavePlantillaMethod: false,
                 showGroupMethod: false,
                 crudGroupMethod: false,
                 groups: sampleGroups
             });
             
             try {
-                const result = await userCategories.open({
+                const result = await userCategories.openDialog({
                     title: 'Individual Classification Only'
                 });
                 
@@ -202,15 +202,15 @@
                 editable: true,
                 showToolbar: true,
                 savedClassifications: savedClassifications,
-                showIndividualMethod: false,
-                canSaveIndividualMethod: false,
+                showPlantillaMethod: false,
+                canSavePlantillaMethod: false,
                 showGroupMethod: true,
                 crudGroupMethod:true,
                 groups: sampleGroups
             });
             
             try {
-                const result = await userCategories.open({
+                const result = await userCategories.openDialog({
                     title: 'Group Classification Only'
                 });
                 
@@ -231,15 +231,15 @@
                 editable: true,
                 showToolbar: true,
                 savedClassifications: savedClassifications,
-                showIndividualMethod: true,
-                canSaveIndividualMethod: true,
+                showPlantillaMethod: true,
+                canSavePlantillaMethod: true,
                 showGroupMethod: false,
                 crudGroupMethod: false,
                 groups: sampleGroups,
             });
             
             try {
-                const result = await userCategories.open({
+                const result = await userCategories.openDialog({
                     title: 'Both Methods Available'
                 });
                 
@@ -261,15 +261,15 @@
                 editable: false, // READ-ONLY MODE
                 showToolbar: true,
                 savedClassifications: savedClassifications,
-                showIndividualMethod: true,
-                canSaveIndividualMethod: false,
+                showPlantillaMethod: true,
+                canSavePlantillaMethod: false,
                 showGroupMethod: false,
                 crudGroupMethod: false,
                 groups: sampleGroups
             });
             
             try {
-                const result = await userCategories.open({
+                const result = await userCategories.openDialog({
                     title: 'Read-Only Classification View'
                 });
                 
@@ -301,15 +301,15 @@
                 editable: false, // READ-ONLY MODE
                 showToolbar: true,
                 savedClassifications: savedClassifications,
-                showIndividualMethod: true,
-                canSaveIndividualMethod: false,
+                showPlantillaMethod: true,
+                canSavePlantillaMethod: false,
                 showGroupMethod: false,
                 crudGroupMethod: false,
                 groups: sampleGroups
             });
             
             try {
-                const result = await userCategories.open({
+                const result = await userCategories.openDialog({
                     title: 'Read-Only View with Pre-classified Data'
                 });
                 
@@ -329,15 +329,15 @@
                 editable: false, // READ-ONLY MODE
                 showToolbar: false, // NO TOOLBAR
                 savedClassifications: [],
-                showIndividualMethod: true,
-                canSaveIndividualMethod: false,
+                showPlantillaMethod: true,
+                canSavePlantillaMethod: false,
                 showGroupMethod: false,
                 crudGroupMethod: false,
                 groups: []
             });
             
             try {
-                const result = await userCategories.open({
+                const result = await userCategories.openDialog({
                     title: 'Read-Only View without Toolbar'
                 });
                 
@@ -358,15 +358,15 @@
                 editable: true,
                 showToolbar: true,
                 savedClassifications: savedClassifications,
-                showIndividualMethod: false, // BOTH FALSE
-                canSaveIndividualMethod: false,
+                showPlantillaMethod: false, // BOTH FALSE
+                canSavePlantillaMethod: false,
                 showGroupMethod: false, // BOTH FALSE
                 crudGroupMethod: false,
                 groups: sampleGroups
             });
             
             try {
-                const result = await userCategories.open({
+                const result = await userCategories.openDialog({
                     title: 'Fallback to Individual (Both Methods Disabled)'
                 });
                 
