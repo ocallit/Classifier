@@ -1,88 +1,162 @@
 /**
+ * ocClasificame - Interactive Classification Widget
  * 
+ * A powerful JavaScript widget for creating interactive classification interfaces
+ * with drag-and-drop functionality, template management, and group-based organization.
  * 
- * Usar helpers
- *  - Plantilla (es para que_clasifica+cajitas de clasificacion o deplano pantalla)
- *  - grupos son lista de que_clasifica
- *  - boton  de seguridad para reload/refresh: Plantillas, grupos, items por si hubo cambios
- * Editores:
- *  - CRUD plantilla, grupos on save refreshes
- *  - CRUD itemsSon link! -como el refresh
-
- CREATE TABLE oc_clasificame_plantilla (
-    oc_clasificame_plantilla_id MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(64) NOT NULL,
-    describe MEDIUMTEXT,
-    que_clasifica VARCHAR(64) NOT NULL,
-    clasifica_en VARCHAR(64) NOT NULL,
-    UNIQUE KEY plantilla_unica(clasifica_en, que_clasifica, plantilla),
-    -- trae: clasifica_id:[ids de que clasifica: productos, usuarios:orden]
- );
-
- CREATE TABLE oc_clasificame_grupo (
-     oc_clasificame_grupo_id MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-     nombre VARCHAR(64) NOT NULL,
-     describe MEDIUMTEXT,
-     que_clasifica VARCHAR(64) NOT NULL,
-     UNIQUE KEY plantilla_unica(que_clasifica, plantilla)
- );
- CREATE TABLE oc_clasificame_grupo_items (
-    oc_clasificame_grupo_items_id MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    oc_clasificame_grupo_id MEDIUMINT UNSIGNED NOT NULL,
-    -- FK CONSTRAINT CASCADE
-    item_id VARCHAR(191) NOT NULL,
-    UNIQUE KEY(oc_clasificame_grupo_id,item_id)
- );
-
+ * Features:
+ * - Drag & Drop Classification: Intuitive item movement between categories
+ * - Template Management: Save and load classification setups for reuse
+ * - Group-Based Classification: Organize and classify items in bulk using predefined groups
+ * - Read-Only Mode: Display classifications without allowing modifications
+ * - Search & Filter: Real-time search functionality to quickly find items
+ * - Responsive Design: Works seamlessly across desktop and mobile devices
+ * 
+ * Database Schema (for backend integration):
+ * 
+ * Templates Table:
+ * CREATE TABLE oc_clasificame_plantilla (
+ *    oc_clasificame_plantilla_id MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ *    nombre VARCHAR(64) NOT NULL,
+ *    describe MEDIUMTEXT,
+ *    que_clasifica VARCHAR(64) NOT NULL,
+ *    clasifica_en VARCHAR(64) NOT NULL,
+ *    UNIQUE KEY plantilla_unica(clasifica_en, que_clasifica, plantilla)
+ * );
+ * 
+ * Groups Table:
+ * CREATE TABLE oc_clasificame_grupo (
+ *     oc_clasificame_grupo_id MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ *     nombre VARCHAR(64) NOT NULL,
+ *     describe MEDIUMTEXT,
+ *     que_clasifica VARCHAR(64) NOT NULL,
+ *     UNIQUE KEY plantilla_unica(que_clasifica, plantilla)
+ * );
+ * 
+ * Group Items Table:
+ * CREATE TABLE oc_clasificame_grupo_items (
+ *    oc_clasificame_grupo_items_id MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ *    oc_clasificame_grupo_id MEDIUMINT UNSIGNED NOT NULL,
+ *    item_id VARCHAR(191) NOT NULL,
+ *    UNIQUE KEY(oc_clasificame_grupo_id,item_id)
+ * );
+ * 
+ * @version 1.0.0
+ * @author ocClasificame Team
+ * @license MIT
+ */
+/**
+ * Main classification widget class
+ * 
+ * Creates an interactive classification interface where items can be organized
+ * into categories using drag-and-drop, individual buttons, templates, or groups.
+ * 
+ * @example
+ * // Basic usage
+ * const classifier = new ocClasificame(
+ *   [{ id: 'todo', label: 'Todo', title: 'To Do' }],
+ *   [{ id: 1, name: 'Task 1', category: 'todo' }],
+ *   { title: 'My Classification', editable: true }
+ * );
+ * 
+ * const result = await classifier.openDialog();
+ * console.log(result); // { todo: ['1'], doing: [], done: [] }
  */
 class ocClasificame {
+    /**
+     * Initialize the classification widget
+     * 
+     * @param {Array} categories - Array of category objects with id, label, title
+     * @param {Array} items - Array of items to classify with id, name, category
+     * @param {Object} options - Configuration options
+     * @param {string} options.title - Dialog title
+     * @param {boolean} options.editable - Whether classification can be modified
+     * @param {string} options.valueId - Property name for item ID (default: 'id')
+     * @param {string} options.valueDisplay - Property name for item display (default: 'name')
+     * @param {string} options.itemsCategoryIdKey - Property name for item category (default: 'category')
+     * @param {boolean} options.showToolbar - Show individual item buttons (default: true)
+     * @param {boolean} options.showPlantillaMethod - Enable template features (default: true)
+     * @param {boolean} options.canSavePlantillaMethod - Allow saving templates (default: false)
+     * @param {boolean} options.showGroupMethod - Enable group features (default: false)
+     * @param {boolean} options.crudGroupMethod - Allow group CRUD operations (default: false)
+     * @param {Array} options.savedClassifications - Array of saved templates
+     * @param {Array} options.groups - Array of available groups
+     * @param {string|null} options.unassignedDefaultTo - Default category for invalid items
+     */
     constructor(categories, items, options = {}) {
+        // Validate required parameters
+        if (!categories || !Array.isArray(categories) || categories.length === 0) {
+            throw new Error('ocClasificame: categories array is required and cannot be empty');
+        }
+        
+        if (!items || !Array.isArray(items)) {
+            throw new Error('ocClasificame: items array is required');
+        }
+
         this.categories = categories;
         this.items = items;
+        // Default configuration options with comprehensive settings
         this.options = {
-            title: 'Classification',
-            que_clasifica: 'producto',
-            que_clasifica_label: 'Items',
+            title: 'Classification',                    // Dialog window title
+            que_clasifica: 'producto',                  // Type identifier for API/database
+            que_clasifica_label: 'Items',              // Plural label for items in UI
 
-            valueId: 'id',
-            valueDisplay: 'name',
-            itemsCategoryIdKey: 'category',
+            valueId: 'id',                             // Property name for item unique identifier
+            valueDisplay: 'name',                      // Property name for item display text
+            itemsCategoryIdKey: 'category',            // Property name for item's current category
 
-            editable: true,
-            showToolbar: true,
-            savedClassifications: [],
-            showPlantillaMethod: true,
-            canSavePlantillaMethod: false,
-            showGroupMethod: false,
-            crudGroupMethod: false,
-            groups: [],
+            editable: true,                            // Whether classification can be modified
+            showToolbar: true,                         // Show individual item action buttons
+            savedClassifications: [],                  // Array of saved classification templates
+            showPlantillaMethod: true,                 // Enable template/individual classification mode
+            canSavePlantillaMethod: false,             // Allow saving new templates
+            showGroupMethod: false,                    // Enable group-based classification mode
+            crudGroupMethod: false,                    // Allow creating/editing groups
+            groups: [],                                // Array of available groups
+            
+            // API endpoint configurations for backend integration
             apiEndpoints: {
-                save: '/api/classifications/save', // For main classifications
-                load: '/api/classifications/list',
-                getGroups: '/api/groups/list', // To fetch initial groups list
-                getGroupItems: '/api/groups/:groupId/items', // To fetch items for a specific group
-                saveGroup: '/api/groups/save', // CRUD: Save a group
-                deleteGroup: '/api/groups/delete' // CRUD: Delete a group
+                save: '/api/classifications/save',                    // For main classifications
+                load: '/api/classifications/list',                   // Load saved templates
+                getGroups: '/api/groups/list',                      // To fetch initial groups list
+                getGroupItems: '/api/groups/:groupId/items',        // To fetch items for a specific group
+                saveGroup: '/api/groups/save',                      // CRUD: Save a group
+                deleteGroup: '/api/groups/delete'                   // CRUD: Delete a group
             },
-            debug:false,
-            unassignedDefaultTo: null, // Default category ID for items with invalid categories
-            ...options
+            
+            debug: false,                              // Enable debug logging
+            unassignedDefaultTo: null,                 // Default category ID for items with invalid categories
+            ...options                                 // Override with user-provided options
         };
 
-        this.currentValues = {};
-        this.sortableInstances = [];
-        this.dialogElement = null;
-        this.isOpen = false;
-        this.selectedGroupItems = [];
+        // Initialize instance state
+        this.currentValues = {};                       // Current classification state by category
+        this.sortableInstances = [];                   // SortableJS instances for drag-and-drop
+        this.dialogElement = null;                     // Reference to the dialog DOM element
+        this.isOpen = false;                          // Whether dialog is currently open
+        this.selectedGroupItems = [];                 // Items selected through group operations
 
+        // Set default category for unassigned items
         this.options.unassignedDefaultTo = this._getDefaultCategoryId();
 
+        // Initialize classification values based on current item categories
         this._initializeValues();
 
-        this.isClosingProgrammatically = false; // Flag for native dialog closeDialog handling
+        // Flag for native dialog close handling to prevent recursive calls
+        this.isClosingProgrammatically = false;
     }
 
 
+    /**
+     * Create the HTML content for the classification interface
+     * 
+     * Generates the complete interface including:
+     * - Template/group management sections (if enabled)
+     * - Search bar and statistics
+     * - Category columns with drag-drop functionality
+     * 
+     * @returns {string} Complete HTML content for the classification interface
+     */
     createContent() {
 
         let classificationManagerHTML = "<div>";
@@ -116,6 +190,18 @@ class ocClasificame {
         `;
     }
 
+    /**
+     * Get the current classification state
+     * 
+     * Returns an object where keys are category IDs and values are arrays
+     * of item IDs currently assigned to that category.
+     * 
+     * @returns {Object} Classification state - { categoryId: [itemId1, itemId2, ...] }
+     * 
+     * @example
+     * const result = classifier.getValue();
+     * // Returns: { todo: ['1', '3'], doing: ['2'], done: ['4', '5'] }
+     */
     getValue() {
         const result = {};
         this.categories.forEach(category => {
@@ -137,6 +223,28 @@ class ocClasificame {
         return result;
     }
 
+    /**
+     * Open the classification dialog
+     * 
+     * Creates and displays the modal dialog with the classification interface.
+     * Returns a Promise that resolves with the classification result when saved,
+     * or rejects when cancelled.
+     * 
+     * @param {Object} dialogOptions - Optional dialog configuration
+     * @param {string} dialogOptions.title - Custom dialog title
+     * @param {string} dialogOptions.width - Dialog width (CSS value)
+     * @param {string} dialogOptions.height - Dialog height (CSS value)
+     * 
+     * @returns {Promise<Object>} Promise that resolves with classification results
+     * 
+     * @example
+     * try {
+     *   const result = await classifier.openDialog({ title: 'Classify Tasks' });
+     *   console.log('Saved:', result);
+     * } catch (error) {
+     *   console.log('Cancelled');
+     * }
+     */
     openDialog(dialogOptions = {}) {
         return new Promise((resolve, reject) => {
             this.resolve = resolve;
@@ -171,6 +279,14 @@ class ocClasificame {
         });
     }
 
+    /**
+     * Close the classification dialog
+     * 
+     * Programmatically closes the dialog and handles cleanup of event listeners
+     * and sortable instances. Resolves or rejects the promise based on save parameter.
+     * 
+     * @param {boolean} save - Whether to save the classification (true) or cancel (false)
+     */
     closeDialog(save = false) {
         this.isClosingProgrammatically = true; // Set flag
 
@@ -198,6 +314,18 @@ class ocClasificame {
         this.isClosingProgrammatically = false; // Reset flag
     }
 
+    /**
+     * Search and filter items based on display text
+     * 
+     * Filters visible items by showing/hiding them based on whether their
+     * display text contains the search term (case-insensitive).
+     * 
+     * @param {string} searchTerm - Text to search for in item display names
+     * 
+     * @example
+     * classifier.search('john'); // Shows only items containing 'john'
+     * classifier.search('');     // Shows all items
+     */
     search(searchTerm) {
 
         const items = this.dialogElement.querySelectorAll('.oc-item');
