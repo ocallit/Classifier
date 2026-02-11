@@ -1,39 +1,7 @@
 /**
- * 
- * 
- * Usar helpers
- *  - Plantilla (es para que_clasifica+cajitas de clasificacion o deplano pantalla)
- *  - grupos son lista de que_clasifica
- *  - boton  de seguridad para reload/refresh: Plantillas, grupos, items por si hubo cambios
- * Editores:
- *  - CRUD plantilla, grupos on save refreshes
- *  - CRUD itemsSon link! -como el refresh
-
- CREATE TABLE oc_clasificame_plantilla (
-    oc_clasificame_plantilla_id MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(64) NOT NULL,
-    describe MEDIUMTEXT,
-    que_clasifica VARCHAR(64) NOT NULL,
-    clasifica_en VARCHAR(64) NOT NULL,
-    UNIQUE KEY plantilla_unica(clasifica_en, que_clasifica, plantilla),
-    -- trae: clasifica_id:[ids de que clasifica: productos, usuarios:orden]
- );
-
- CREATE TABLE oc_clasificame_grupo (
-     oc_clasificame_grupo_id MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-     nombre VARCHAR(64) NOT NULL,
-     describe MEDIUMTEXT,
-     que_clasifica VARCHAR(64) NOT NULL,
-     UNIQUE KEY plantilla_unica(que_clasifica, plantilla)
- );
- CREATE TABLE oc_clasificame_grupo_items (
-    oc_clasificame_grupo_items_id MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    oc_clasificame_grupo_id MEDIUMINT UNSIGNED NOT NULL,
-    -- FK CONSTRAINT CASCADE
-    item_id VARCHAR(191) NOT NULL,
-    UNIQUE KEY(oc_clasificame_grupo_id,item_id)
- );
-
+ * Project: oc_clasificame
+ * @description Main logic for classification module.
+ * @see {@link ../docs/oc_clasificame_docs.md} - ocClasificame API, options, events
  */
 class ocClasificame {
     constructor(categories, items, options = {}) {
@@ -461,6 +429,11 @@ class ocClasificame {
         const lists = this.dialogElement.querySelectorAll('.oc-items-list');
 
         lists.forEach(list => {
+            /**
+             * @description Initializes Sortable for list classification.
+             * @see {@link ../docs/sortablejs_guide.md} - API summary, options, and events.
+             * @note Follow project-specific naming for IDs and data attributes.
+             */
             const sortable = new Sortable(list, {
                 group: 'clasificame-items',
                 animation: 150,

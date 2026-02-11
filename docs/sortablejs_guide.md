@@ -1,5 +1,5 @@
-# SortableJS Complete Implementation Guide
-
+# SortableJS Implementation Guide, API Summary
+> **Context:** Sortable Reusable widget for drag-and-drop classification. options, methods, events.
 ## Overview
 SortableJS is a modern JavaScript library for creating reorderable drag-and-drop lists that works on modern browsers and touch devices without requiring jQuery. It has native support for touch devices and modern browsers (including IE9).
 

@@ -1,8 +1,14 @@
 # ocClasificame Widget Documentation
+> **Context:** This file serves as the Single Source of Truth (SSOT) for the `oc_clasificame` module.
+> **Scope:** Defines data structures, UI naming conventions, and logic flow.
+> **Integration Note:** This widget is agnostic to the project's data model.
+> **AI Instruction:** When implementing, you MUST map the project's specific database fields (e.g., `product_id`, `sku`) to the widget's expected `id` and `name` format during initialization. Do not rename project variables to match this documentation. code here is example to code must be adapted to the project
 
 ## Overview
 
 `ocClasificame` is a JavaScript widget for creating interactive classification interfaces. It allows users to categorize items using drag-and-drop functionality, individual item buttons, template management, and group-based classification. The widget supports both editable and read-only modes.
+
+
 
 ## Constructor
 
@@ -61,13 +67,14 @@ new ocClasificame(categories, items, options = {})
 ### API Endpoints Object
 
 ```javascript
+// DEFAULT configuration (Override these with project-specific routes)
 apiEndpoints: {
-    save: '/api/classifications/save',
-    load: '/api/classifications/list',
-    getGroups: '/api/groups/list',
-    getGroupItems: '/api/groups/:groupId/items',
-    saveGroup: '/api/groups/save',
-    deleteGroup: '/api/groups/delete'
+    save: '',
+    load: '',
+    getGroups: '',
+    getGroupItems: '',
+    saveGroup: '',
+    deleteGroup: ''
 }
 ```
 
@@ -174,7 +181,7 @@ clasificame.applyGroupClassification('admin_group', 'write_access');
 
 ## Usage Examples
 
-### Basic Editable Classification
+### Basic Editable Classification  Example code
 
 ```javascript
 const categories = [
@@ -203,7 +210,7 @@ try {
 }
 ```
 
-### Read-Only Mode
+### Read-Only Mode Example code
 
 ```javascript
 const clasificame = new ocClasificame(categories, users, {
@@ -220,9 +227,10 @@ try {
 }
 ```
 
-### With Template Management
+### With Template Management Example code
 
 ```javascript
+// @example
 const savedTemplates = [
     {
         id: '1',
@@ -245,7 +253,7 @@ const clasificame = new ocClasificame(categories, users, {
 });
 ```
 
-### With Group Management
+### With Group Management Example code
 
 ```javascript
 const groups = [
@@ -262,7 +270,7 @@ const clasificame = new ocClasificame(categories, users, {
 });
 ```
 
-### Custom Default Category
+### Custom Default Category Example code
 
 ```javascript
 const clasificame = new ocClasificame(categories, users, {
@@ -272,7 +280,7 @@ const clasificame = new ocClasificame(categories, users, {
 });
 ```
 
-## Event Handling
+## ocClasificame Widget Event Handling
 
 ### Success (Save)
 
@@ -291,7 +299,7 @@ try {
 }
 ```
 
-### Cancellation
+### ocClasificame Widget Cancellation
 
 The Promise rejects in these scenarios:
 - User clicks "Cancel" button
@@ -311,7 +319,7 @@ try {
 }
 ```
 
-## CSS Customization
+## ocClasificame Widget CSS Customization
 
 The widget uses CSS classes prefixed with `oc-`. Key classes:
 
@@ -323,7 +331,7 @@ The widget uses CSS classes prefixed with `oc-`. Key classes:
 - `.oc-classification-manager` - Template management area
 - `.oc-group-section` - Group management area
 
-## Browser Compatibility
+## ocClasificame Widget Browser Compatibility
 
 - Requires modern browser with support for:
   - ES6 classes and async/await
@@ -333,20 +341,16 @@ The widget uses CSS classes prefixed with `oc-`. Key classes:
 
 ## Dependencies
 
-- **SortableJS**: Required for drag-and-drop functionality
+- **SortableJS**: Required for drag-and-drop functionality See `../docs/sortablejs_guide.md` for api, options and event summary
 - **Font Awesome**: Optional, for icons in UI buttons
 
-## Best Practices
+## ocClasificame Widget Best Practices
 
-1. **Always handle Promise rejection** to manage user cancellation
-2. **Use meaningful category IDs** that won't conflict with system values
-3. **Validate item data** before passing to constructor
-4. **Set appropriate default category** using `unassignedDefaultTo` for data integrity
-5. **Use read-only mode** for display-only scenarios to prevent accidental changes
-6. **Test with empty datasets** to ensure graceful handling
-7. **Provide user feedback** after successful saves or cancellations
+1. **Set appropriate default category** using `unassignedDefaultTo` for data integrity
+2. **Use read-only mode** for display-only scenarios to prevent accidental changes
 
-## Error Handling
+
+## ocClasificame Widget Error Handling
 
 Common error scenarios:
 - Empty categories array → Widget initialization fails
