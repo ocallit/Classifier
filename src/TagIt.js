@@ -1,10 +1,9 @@
 // File: TagIt.js
-// Version: 2.2.0
+// Version: 2.3.0 - jQuery removed (fetch), fetchItemTags, ClassifyIt integration
 
 /**
  TagIt - A stateless widget for editing Tom Select options
  Each instance is independent with no central management
- @TODO 👁️ a list/clasificame
  */
 class TagIt {
     constructor(selectElement, options = {}) {
@@ -26,6 +25,10 @@ class TagIt {
             dialogTitle: 'Editar Categorias',
             confirmDelete: true,
             readOnly: false,
+            itemId: null,
+            itemTable: null,
+            classifier: false,
+            onClassify: null,
             ...options
         };
 
@@ -35,6 +38,12 @@ class TagIt {
     init() {
         if(this.selectElement.hasAttribute('data-tagit-ro')) {
             this.options.readOnly = true;
+        }
+        if(this.selectElement.dataset.tagitItemid) {
+            this.options.itemId = this.selectElement.dataset.tagitItemid;
+        }
+        if(this.selectElement.dataset.tagitTable) {
+            this.options.itemTable = this.selectElement.dataset.tagitTable;
         }
 
         // Generate unique IDs for this instance
@@ -71,12 +80,21 @@ class TagIt {
 
         // Create dialog
         this.buildDialogContent();
+
+        // Auto-fetch if itemId present and select has no options
+        const hasOptions = this.selectElement.querySelectorAll('option').length > 0;
+        if(this.options.itemId && !hasOptions) {
+            this.fetchItemTags();
+        }
     }
 
     getTomSelectInstance() {
         return this.selectElement.tomselect || null;
     }
 
+    /**
+     MODIFIED: Creates the flexRowDyanimic wrapper for the TomSelect element
+     */
     createWrapperEarly() {
         // Create wrapper div
         this.wrapperDiv = document.createElement('div');
@@ -96,6 +114,9 @@ class TagIt {
         this.wrapperDiv.appendChild(tomSelectContainer);
     }
 
+    /**
+     MODIFIED: Adds buttons into a fixed-width container
+     */
     getButtonContainer() {
         // Find or create the fixed-size container for buttons
         let buttonContainer = this.wrapperDiv.querySelector('.tagit_buttonContainer');
@@ -141,6 +162,10 @@ class TagIt {
             this.copyOptionsToClipboard(e.currentTarget);
         });
     }
+
+    // ===================================================================
+    // RESTORED: All JS helper functions are back
+    // ===================================================================
 
     loadOptionsFromSelect() {
         this.currentOptions.clear();
@@ -204,7 +229,7 @@ class TagIt {
         if(tomSelectInstance) {
             // First remove from selection if selected
             const currentValues = tomSelectInstance.getValue();
-            if(Array.isArray(currentValues) ? currentValues.includes(optionValue) : currentValues == optionValue) {
+            if(Array.isArray(currentValues) ? currentValues.includes(optionValue) : currentValues === optionValue) {
                 tomSelectInstance.removeItem(optionValue, true);
             }
 
@@ -226,7 +251,7 @@ class TagIt {
             const currentValues = tomSelectInstance.getValue();
             const isSelected = Array.isArray(currentValues)
                 ? currentValues.includes(optionValue)
-                : currentValues == optionValue;
+                : currentValues === optionValue;
 
             // Update the option data in Tom Select
             tomSelectInstance.updateOption(optionValue, {
@@ -273,7 +298,7 @@ class TagIt {
                 continue;
             }
 
-            if(value && optValue == value) {
+            if(value && optValue === value) {
                 return {
                     valid: false,
                     error: `Value "${value}" already exists`
@@ -281,7 +306,7 @@ class TagIt {
             }
 
             const normalizedExistingText = this.normalizeText(option.text);
-            if(normalizedExistingText == normalizedNewText) {
+            if(normalizedExistingText === normalizedNewText) {
                 return {
                     valid: false,
                     error: `Ya existe "${trimmedText}" como: "${option.text}"`
@@ -308,6 +333,38 @@ class TagIt {
         return response.json();
     }
 
+    /**
+     * Fetch tags for the current item from the backend.
+     * Populates the select and TomSelect with the returned tags.
+     * Can be called explicitly or auto-called on init when itemId is set
+     * and the <select> has no options.
+     */
+    async fetchItemTags() {
+        if(!this.options.itemId) {
+            return;
+        }
+
+        try {
+            const response = await this._apiPost({
+                action: 'tagGetItemTags',
+                catalog_id: this.options.catalogId,
+                item_id: this.options.itemId,
+                item_table: this.options.itemTable || ''
+            });
+            if(response.success && response.data && response.data.tags) {
+                response.data.tags.forEach(tag => {
+                    this.addOptionToSelect(
+                        { value: tag.value, text: tag.text },
+                        !!tag.selected
+                    );
+                });
+                this.loadOptionsFromSelect();
+            }
+        } catch(e) {
+            console.error('TagIt: fetchItemTags failed', e);
+        }
+    }
+
     showAlert(message) {
         return DialogUtil.alert(this.escapeHtml(message), 'Aviso', 'info');
     }
@@ -323,6 +380,13 @@ class TagIt {
         });
     }
 
+    // ===================================================================
+    // END of restored functions
+    // ===================================================================
+
+    /**
+     MODIFIED: Rebuilds the dialog content using the new flexbox classes
+     */
     buildDialogContent() {
         if(this.dialogContent) {
             return;
@@ -573,6 +637,9 @@ class TagIt {
         }
     }
 
+    /**
+     MODIFIED: Renders list items using the flexRowDyanimic pattern
+     */
     renderOptionsList() {
         if(!this.dialogElements.list) {
             return;
@@ -589,18 +656,22 @@ class TagIt {
         sortedOptions.forEach((option) => {
             const escapedValue = this.escapeHtml(option.value);
             const escapedText = this.escapeHtml(option.text);
+            const classifyBtn = this.options.classifier
+                ? `<button type="button" class="tagit_button--icon tagit_classifyBtn" data-value="${escapedValue}" title="Clasificar">🏷️</button>`
+                : '';
             html += `
                 <div class="tagit_optionItem" data-value="${escapedValue}">
                     <div class="tagit_optionDisplay flexRowDyanimic" data-mode="view">
                         <div>
                             <span class="tagit_optionText">${escapedText}</span>
                         </div>
-                        ${!this.options.readOnly ? `
-                            <div>
+                        <div>
+                            ${classifyBtn}
+                            ${!this.options.readOnly ? `
                                 <button type="button" class="tagit_button--icon tagit_editBtn" data-value="${escapedValue}" title="Edit">✏️</button>
                                 <button type="button" class="tagit_button--icon tagit_deleteBtn" data-value="${escapedValue}" title="Delete">🗑️</button>
-                            </div>
-                        ` : ''}
+                            ` : ''}
+                        </div>
                     </div>
 
                     ${!this.options.readOnly ? `
@@ -630,6 +701,17 @@ class TagIt {
         }
 
         const listContainer = this.dialogElements.list;
+
+        // Classify buttons
+        listContainer.querySelectorAll('.tagit_classifyBtn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const value = e.currentTarget.getAttribute('data-value');
+                const option = this.currentOptions.get(value);
+                if(option && typeof this.options.onClassify === 'function') {
+                    this.options.onClassify(value, option.text, this.options.readOnly);
+                }
+            });
+        });
 
         // Edit buttons
         listContainer.querySelectorAll('.tagit_editBtn').forEach(btn => {
@@ -681,6 +763,7 @@ class TagIt {
         // Cancel any other editing first
         this.cancelAllEditing();
 
+        // FIXED: Scope to this dialog instance
         if(!this.dialogContent) {
             return;
         }
@@ -703,7 +786,7 @@ class TagIt {
     }
 
     cancelInlineEdit(value) {
-
+        // FIXED: Scope to this dialog instance
         if(!this.dialogContent) {
             return;
         }
@@ -783,7 +866,7 @@ class TagIt {
     }
 
     async saveInlineEdit(value) {
-
+        // FIXED: Scope to this dialog instance
         if(!this.dialogContent) {
             return;
         }
@@ -1066,8 +1149,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if(element.dataset.tagitCatalogid) {
             options.catalogId = element.dataset.tagitCatalogid;
         }
+        if(element.dataset.tagitItemid) {
+            options.itemId = element.dataset.tagitItemid;
+        }
+        if(element.dataset.tagitTable) {
+            options.itemTable = element.dataset.tagitTable;
+        }
 
         new TagIt(element, options);
     });
 });
-console.log("V2.2")

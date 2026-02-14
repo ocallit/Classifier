@@ -6,6 +6,10 @@
     <title>TagIt Demo</title>
     <style>
         select {background-color: white;}
+        .demo-container { padding: 2rem; font-family: system-ui, sans-serif; }
+        .demo-section { margin-bottom: 2rem; padding: 1rem; border: 1px solid #dee2e6; border-radius: 6px; }
+        .demo-section h2 { margin-top: 0; font-size: 1.1rem; color: #2c3e50; }
+        .demo-section p { font-size: 0.85rem; color: #6c757d; margin: 0.5rem 0; }
     </style>
     <style id="common-to-all-pages">
 
@@ -115,8 +119,12 @@
 </head>
 <body>
     <div class="demo-container">
-        <h1>Tags Producto</h1>
+        <h1>TagIt Demo</h1>
+
+        <!-- Demo 1: Auto-init, server-rendered options -->
         <div class="demo-section">
+            <h2>1. Server-rendered (auto-init via data attributes)</h2>
+            <p>Options pre-rendered in HTML. No fetch on init.</p>
             <div class="form-group" style="width:30em">
                 <label for="categories">Categorías</label>
                 <select id="categories" multiple
@@ -135,7 +143,43 @@
                 </select>
             </div>
         </div>
+
+        <!-- Demo 2: Programmatic init with ClassifyIt integration -->
+        <div class="demo-section">
+            <h2>2. With ClassifyIt integration (classifier + onClassify)</h2>
+            <p>Click 🏷️ on any tag row to open the classifier.</p>
+            <div class="form-group" style="width:30em">
+                <label for="categories-classify">Categorías (con Clasificador)</label>
+                <select id="categories-classify" multiple>
+                    <option value="a1">Deportes</option>
+                    <option value="b2">Escolar</option>
+                    <option value="c3" selected="selected">Nuevo</option>
+                    <option value="d4" selected="selected">Primavera</option>
+                    <option value="e5">Invierno</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Demo 3: Dynamic fetch (empty select + itemId) -->
+        <div class="demo-section">
+            <h2>3. Dynamic fetch (empty select, loads from API)</h2>
+            <p>Select starts empty. Tags fetched via <code>tagGetItemTags</code> on init.</p>
+            <div class="form-group" style="width:30em">
+                <label for="categories-dynamic">Categorías (Producto #42)</label>
+                <select id="categories-dynamic" multiple
+                        data-tagit
+                        data-tagit-rw
+                        data-tagit-catalogid="1"
+                        data-tagit-itemid="42"
+                        data-tagit-table="producto_general_id"
+                        data-tagit-title="Categorias (Producto #42)"
+                        data-tagit-apiurl="./api/tagit_api.php"
+                >
+                </select>
+            </div>
+        </div>
     </div>
+
     <script>
 
         // Mock API for demo purposes (override fetch)
@@ -149,6 +193,11 @@
                 {id: 'd4', text: 'Primavera'},
                 {id: 'e5', text: 'Invierno'}
             ];
+
+            // Mock: which tags does each item have?
+            const mockItemTags = {
+                '42': ['c3', 'e5'] // Producto #42 has "Nuevo" and "Invierno"
+            };
 
             const originalFetch = window.fetch;
 
@@ -165,6 +214,18 @@
                             let result = { success: false, error: 'Unknown action', data: null };
 
                             switch(action) {
+                                case 'tagGetItemTags': {
+                                    const itemId = params.get('item_id');
+                                    const selectedIds = mockItemTags[itemId] || [];
+                                    const tags = mockCategories.map(cat => ({
+                                        value: cat.id,
+                                        text: cat.text,
+                                        selected: selectedIds.includes(cat.id)
+                                    }));
+                                    result = { success: true, error: null, data: { tags: tags } };
+                                    break;
+                                }
+
                                 case 'tagAdd': {
                                     const text = params.get('text');
                                     const exists = mockCategories.some(item =>
@@ -214,10 +275,33 @@
                     });
                 }
 
-                // Pass through everything else (e.g. TomSelect CDN, etc.)
+                // Pass through everything else
                 return originalFetch.apply(this, arguments);
             };
         })();
+
+        // Demo 2: Programmatic init with ClassifyIt integration
+        document.addEventListener('DOMContentLoaded', function() {
+            new TagIt(document.getElementById('categories-classify'), {
+                apiUrl: './api/tagit_api.php',
+                catalogId: '1',
+                dialogTitle: 'Categorias de Productos',
+                classifier: true,
+                onClassify: (tagValue, tagText, readOnly) => {
+                    // In production, wire to ClassifyIt:
+                    //
+                    // const items = await fetchProductsByTag(tagValue);
+                    // const c = new ClassifyIt(categories, items, {
+                    //     title: `Productos: ${tagText}`,
+                    //     editable: !readOnly
+                    // });
+                    // return c.openDialog();
+
+                    const mode = readOnly ? 'readonly' : 'editable';
+                    alert(`ClassifyIt would open for:\n\nTag: "${tagText}" (${tagValue})\nMode: ${mode}`);
+                }
+            });
+        });
     </script>
 </body>
 </html>

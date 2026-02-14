@@ -3,7 +3,7 @@
 Utils to classify items:
 
 - **TagIt** for 1 item view or manage Tags/Classifications
-- **ClassifyIt** For a Tag/Classification view/manage items classified
+- **ClassifyIt** For a Tag/Classification view/manage items tagged or classified
 
 ## TagIt
 
