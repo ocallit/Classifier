@@ -1,6 +1,21 @@
 # ClassifyIt a Classifier
-Utils to classify items
 
+Utils to classify items:
+
+- **TagIt** for 1 item view or manage Tags/Classifications
+- **ClassifyIt** For a Tag/Classification view/manage items classified
+
+## TagIt
+
+	TagIt transforms <select> elements into editable tag management interfaces with CRUD operations in draggable modals; DialogIt provides the underlying promise-based, drag-enabled dialog system with SCH design system integration.
+
+
+### Summary
+
+TagIt is a JavaScript widget that enhances standard HTML &lt;select> elements (powered by Tom Select) with a modal dialog interface for managing tags/categories. It allows users to add, edit, delete, and search through options in a draggable, accessible dialog while keeping the underlying select element synchronized. The companion DialogIt provides the foundational modal system with drag-and-drop capabilities, CSS variable theming, and promise-based APIs.
+One-Liner
+
+## ClassifyIt
 
 **ClassifyIt** is a lightweight, interactive JavaScript widget designed for categorizing items into distinct buckets.
 It provides a modal-driven interface for managing permissions, product categories, user roles, and more.

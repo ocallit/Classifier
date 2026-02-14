@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TagIt Demo</title>
+    <style>
+        select {background-color: white;}
+    </style>
+    <style id="common-to-all-pages">
+
+        .ontoy-dlg, .ontoy-dlg * { box-sizing: border-box; }
+        /* CRITICAL UI RULE: DO NOT USE BLUR, BACKDROP-FILTER, OR GLASS-MORPHISM.
+        Reason: Causes pixelation, high GPU load, and bad UX (Governance/QA Approved).
+        Keep background-color as a simple semi-transparent hex or rgba.
+        */
+        .ontoy-dlg::backdrop { background-color: transparent; backdrop-filter: none !important; }
+        .ontoy-dlg[open] { display: flex; flex-direction: column; }
+        .ontoy-dlg {
+            resize: both;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            margin: 0;
+            padding: 0;
+            border: 1px solid #888;
+            border-radius: 6px;
+            min-width: 300px;
+            width: fit-content;
+            max-width: 95vw;
+            min-height: 200px;
+            height: fit-content;
+            max-height: 95vh;
+            overflow: hidden;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            background: white;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        .ontoy-dlg-header {
+            background: #2c3e50;
+            color: white;
+            padding: 12px 16px;
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+            flex: 0 0 auto;
+            user-select: none;
+        }
+
+        .ontoy-dlg-content {
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: start;
+            gap: 1rem;
+            flex: 1 1 auto;
+            min-height: 100px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            width: 100%;
+        }
+
+        .ontoy-dlg-footer {
+            padding: 1rem;
+            border-top: 1px solid #e2e8f0;
+            background: #f8fafc;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            width: 100%;
+            flex: 0 0 auto;
+        }
+
+        .ontoy-dlg-close {
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            line-height: 1;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .ontoy-dlg-close:hover { background: rgba(255,255,255,0.1); }
+
+
+        @media print {
+            .ontoy-topbar, .ontoy-feature-header, .ontoy-dlg, .favmnu-dropdown, .mainmnu-dropdown,
+            button, input[type='submit'], input[type='reset'], input[type="image"]
+            { display: none !important; }
+            [data-noprint] { display: none !important; }
+            .noprint { display: none !important; }
+            main { width: 100%; margin: 0; }
+        }
+    </style>
+
+    <link rel="stylesheet" href="../src/TagIt.css">
+    <script src="../src/DialogUtil.js"></script>
+    <script src="../src/TagIt.js"></script>
+
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
+
+</head>
+<body>
+    <div class="demo-container">
+        <h1>Tags Producto</h1>
+        <div class="demo-section">
+            <div class="form-group" style="width:30em">
+                <label for="categories">Categorías</label>
+                <select id="categories" multiple
+                        data-tagit
+                        data-tagit-rw
+                        data-tagit-catalogid="1"
+                        data-tagit-table="producto_general_id"
+                        data-tagit-title="Categorias de Productos"
+                        data-tagit-apiurl="./api/tagit_api.php"
+                >
+                    <option value="a1">Deportes</option>
+                    <option value="b2">Escolar</option>
+                    <option value="c3" selected="selected">Nuevo</option>
+                    <option value="d4" selected="selected">Primavera</option>
+                    <option value="e5">Invierno</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    <script>
+
+        // Mock API for demo purposes (override fetch)
+        (function() {
+            const MOCK_DELAY = 300;
+
+            let mockCategories = [
+                {id: 'a1', text: 'Deportes'},
+                {id: 'b2', text: 'Escolar'},
+                {id: 'c3', text: 'Nuevo'},
+                {id: 'd4', text: 'Primavera'},
+                {id: 'e5', text: 'Invierno'}
+            ];
+
+            const originalFetch = window.fetch;
+
+            window.fetch = function(url, options) {
+                // Only intercept POST to the tagit API url
+                if(options && options.method === 'POST' && String(url).includes('tagit_api')) {
+                    const params = new URLSearchParams(options.body);
+                    const action = params.get('action');
+
+                    console.log('[MockAPI]', action, Object.fromEntries(params));
+
+                    return new Promise(resolve => {
+                        setTimeout(() => {
+                            let result = { success: false, error: 'Unknown action', data: null };
+
+                            switch(action) {
+                                case 'tagAdd': {
+                                    const text = params.get('text');
+                                    const exists = mockCategories.some(item =>
+                                        item.text.toLowerCase() === text.toLowerCase()
+                                    );
+                                    if(exists) {
+                                        result = { success: false, error: 'Item already exists', data: null };
+                                    } else {
+                                        const newId = Date.now().toString();
+                                        mockCategories.push({ id: newId, text: text });
+                                        result = { success: true, error: null, data: { id: newId } };
+                                    }
+                                    break;
+                                }
+
+                                case 'tagUpdate': {
+                                    const id = params.get('id');
+                                    const text = params.get('text');
+                                    const idx = mockCategories.findIndex(item => item.id === id);
+                                    if(idx !== -1) {
+                                        mockCategories[idx].text = text;
+                                        result = { success: true, error: null, data: null };
+                                    } else {
+                                        result = { success: false, error: 'Item not found', data: null };
+                                    }
+                                    break;
+                                }
+
+                                case 'tagDelete': {
+                                    const id = params.get('id');
+                                    const idx = mockCategories.findIndex(item => item.id === id);
+                                    if(idx !== -1) {
+                                        mockCategories.splice(idx, 1);
+                                        result = { success: true, error: null, data: null };
+                                    } else {
+                                        result = { success: false, error: 'Item not found', data: null };
+                                    }
+                                    break;
+                                }
+                            }
+
+                            resolve(new Response(JSON.stringify(result), {
+                                status: 200,
+                                headers: { 'Content-Type': 'application/json' }
+                            }));
+                        }, MOCK_DELAY);
+                    });
+                }
+
+                // Pass through everything else (e.g. TomSelect CDN, etc.)
+                return originalFetch.apply(this, arguments);
+            };
+        })();
+    </script>
+</body>
+</html>
