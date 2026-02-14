@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ocClasificame Demo - Complete with Read-Only Support</title>
+    <title>ClassifyIt Demo - Complete with Read-Only Support</title>
 
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Link to your external CSS file -->
-    <link rel="stylesheet" href="../src/oc_clasificame.css">
+    <link rel="stylesheet" href="../src/classifyIt.css">
     <!-- Link to your external JavaScript file -->
-    <script src="../src/oc_clasificame.js"></script>
+    <script src="../src/classifyIt.js"></script>
     <style>
         /* Additional demo-specific styles */
         .demo-container {
@@ -74,7 +74,7 @@
 </head>
 <body>
     <div class="demo-container">
-        <h1 class="demo-title">ocClasificame Demo - Complete with Read-Only Support</h1>
+        <h1 class="demo-title">ClassifyIt Demo - Complete with Read-Only Support</h1>
 
         <div class="demo-section">
             <h3>Editable Modes</h3>
@@ -169,7 +169,7 @@
 
         // EDITABLE MODES
         async function openIndividualOnly() {
-            const userCategories = new ocClasificame(permissions, users, {
+            const userCategories = new ClassifyIt(permissions, users, {
                 title: 'User Permission Classification',
                 valueId: 'id',
                 valueDisplay: 'name',
@@ -198,7 +198,7 @@
         }
 
         async function openGroupOnly() {
-            const userCategories = new ocClasificame(permissions, users, {
+            const userCategories = new ClassifyIt(permissions, users, {
                 title: 'User Permission Classification',
                 valueId: 'id',
                 valueDisplay: 'name',
@@ -227,7 +227,7 @@
         }
 
         async function openIndividualWithEdit() {
-            const userCategories = new ocClasificame(permissions, users, {
+            const userCategories = new ClassifyIt(permissions, users, {
                 title: 'User Permission Classification',
                 valueId: 'id',
                 valueDisplay: 'name',
@@ -257,7 +257,7 @@
 
         // READ-ONLY MODES
         async function openReadOnlyMode() {
-            const userCategories = new ocClasificame(permissions, users, {
+            const userCategories = new ClassifyIt(permissions, users, {
                 title: 'User Permission Classification',
                 valueId: 'id',
                 valueDisplay: 'name',
@@ -297,7 +297,7 @@
                 {id: 8, name: "Fiona Apple", category: "read"}
             ];
 
-            const userCategories = new ocClasificame(permissions, preclassifiedUsers, {
+            const userCategories = new ClassifyIt(permissions, preclassifiedUsers, {
                 title: 'User Permission Classification',
                 valueId: 'id',
                 valueDisplay: 'name',
@@ -325,7 +325,7 @@
         }
 
         async function openReadOnlyNoToolbar() {
-            const userCategories = new ocClasificame(permissions, users, {
+            const userCategories = new ClassifyIt(permissions, users, {
                 title: 'User Permission Classification',
                 valueId: 'id',
                 valueDisplay: 'name',
@@ -354,7 +354,7 @@
 
         // EDGE CASES
         async function openNeither() {
-            const userCategories = new ocClasificame(permissions, users, {
+            const userCategories = new ClassifyIt(permissions, users, {
                 title: 'User Permission Classification',
                 valueId: 'id',
                 valueDisplay: 'name',
@@ -403,7 +403,7 @@
 
             // First test: Without unassignedDefaultTo (should default to first category)
             console.log("TEST 1: Without unassignedDefaultTo option");
-            const classifier1 = new ocClasificame(testCategories, testItems, {
+            const classifier1 = new ClassifyIt(testCategories, testItems, {
                 title: 'Test Without unassignedDefaultTo',
                 valueId: 'id',
                 valueDisplay: 'name',
@@ -423,7 +423,7 @@
 
                 // Second test: With unassignedDefaultTo set to category3
                 console.log("\nTEST 2: With unassignedDefaultTo set to category3");
-                const classifier2 = new ocClasificame(testCategories, testItems, {
+                const classifier2 = new ClassifyIt(testCategories, testItems, {
                     title: 'Test With unassignedDefaultTo',
                     valueId: 'id',
                     valueDisplay: 'name',

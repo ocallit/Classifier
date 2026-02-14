@@ -1,9 +1,9 @@
 /**
- * Project: oc_clasificame
+ * Project: classifyIt
  * @description Main logic for classification module.
- * @see {@link ../docs/oc_clasificame_docs.md} - ocClasificame API, options, events
+ * @see {@link ../docs/classifyIt_docs.md} - ClassifyIt API, options, events
  */
-class ocClasificame {
+class ClassifyIt {
     constructor(categories, items, options = {}) {
         this.categories = categories;
         this.items = items;
@@ -198,7 +198,7 @@ class ocClasificame {
 
         // Ensure categories array is not empty before trying to access its first element
         if(this.categories.length === 0) {
-            console.error("ocClasificame: No categories defined. Cannot initialize values.");
+            console.error("ClassifyIt: No categories defined. Cannot initialize values.");
             return; // Cannot proceed without categories
         }
 
@@ -603,7 +603,7 @@ class ocClasificame {
                         // dialogClass: 'oc-child-clasificame-dialog' // Optional: for different styling
                     };
 
-                    const groupMgmtInstance = new ocClasificame(groupManagementCategories, this.items, childInstanceOptions);
+                    const groupMgmtInstance = new ClassifyIt(groupManagementCategories, this.items, childInstanceOptions);
 
                     const compositeGroupName = prompt("Nombre del grupo:");
                     if(!compositeGroupName || compositeGroupName.trim() === '') {

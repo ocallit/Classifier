@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ocClasificame QUnit Tests</title>
+    <title>ClassifyIt QUnit Tests</title>
     
     <!-- QUnit CSS and JS -->
     <link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-2.19.4.css">
@@ -13,7 +13,7 @@
     <!-- SortableJS dependency -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <!-- Component under test -->
-    <script src="../src/oc_clasificame.js"></script>
+    <script src="../src/classifyIt.js"></script>
     
     <style>
         /* Hide the dialog during tests */
@@ -106,10 +106,10 @@
 
             QUnit.test('Constructor with minimal parameters', function(assert) {
                 const originalItems = getTestItems();
-                const classifier = new ocClasificame(getTestCategories(), originalItems);
+                const classifier = new ClassifyIt(getTestCategories(), originalItems);
                 const dialogPromise = classifier.openDialog();
                 dialogPromise.catch(() => {}); // Suppress rejection
-                assert.ok(classifier instanceof ocClasificame, 'Instance created successfully');
+                assert.ok(classifier instanceof ClassifyIt, 'Instance created successfully');
                 assert.deepEqual(classifier.categories, getTestCategories(), 'Categories assigned correctly');
 
                 // Items array should be the same reference but some categories may be updated
@@ -139,7 +139,7 @@
                     itemsCategoryIdKey: 'category'
                 };
 
-                const classifier = new ocClasificame(getTestCategories(), getTestItems(), customOptions);
+                const classifier = new ClassifyIt(getTestCategories(), getTestItems(), customOptions);
                 const dialogPromise = classifier.openDialog();
                 dialogPromise.catch(() => {}); // Suppress rejection
                 assert.equal(classifier.options.title, 'Custom Classification', 'Custom title set');
@@ -148,7 +148,7 @@
             });
 
             QUnit.test('Invalid unassignedDefaultTo falls back to first category', function(assert) {
-                const classifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                const classifier = new ClassifyIt(getTestCategories(), getTestItems(), {
                     valueId: 'id',
                     valueDisplay: 'name',
                     itemsCategoryIdKey: 'category',
@@ -169,7 +169,7 @@
         QUnit.module('Content Generation', function() {
             
             QUnit.test('createContent generates proper HTML structure', function(assert) {
-                const classifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                const classifier = new ClassifyIt(getTestCategories(), getTestItems(), {
                     showPlantillaMethod: true,
                     showGroupMethod: true
                 });
@@ -183,12 +183,12 @@
             });
 
             QUnit.test('Read-only mode content differences', function(assert) {
-                const editableClassifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                const editableClassifier = new ClassifyIt(getTestCategories(), getTestItems(), {
                     editable: true,
                     showToolbar: true
                 });
 
-                const readOnlyClassifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                const readOnlyClassifier = new ClassifyIt(getTestCategories(), getTestItems(), {
                     editable: false,
                     showToolbar: true
                 });
@@ -217,7 +217,7 @@
         QUnit.module('Item Movement', function() {
             
             QUnit.test('_moveItemTo moves items correctly', function(assert) {
-                const classifier = new ocClasificame(getTestCategories(), getTestItems());
+                const classifier = new ClassifyIt(getTestCategories(), getTestItems());
                 const dialogPromise = classifier.openDialog();
                 dialogPromise.catch(() => {}); // Suppress rejection
 
@@ -243,7 +243,7 @@
             });
 
             QUnit.test('_moveItemTo works without dialog (data-only mode)', function(assert) {
-                const classifier = new ocClasificame(getTestCategories(), getTestItems());
+                const classifier = new ClassifyIt(getTestCategories(), getTestItems());
                 
                 // Move item without opening dialog - this should update the data model
                 classifier._moveItemTo(1, 'read');
@@ -254,7 +254,7 @@
             });
 
             QUnit.test('_moveVisibleItems moves multiple items', function(assert) {
-                const classifier = new ocClasificame(getTestCategories(), getTestItems());
+                const classifier = new ClassifyIt(getTestCategories(), getTestItems());
                 const dialogPromise = classifier.openDialog();
                 dialogPromise.catch(() => {}); // Suppress rejection
 
@@ -295,7 +295,7 @@
         QUnit.module('Group Functionality', function() {
             
             QUnit.test('Group items loaded correctly', function(assert) {
-                const classifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                const classifier = new ClassifyIt(getTestCategories(), getTestItems(), {
                     showGroupMethod: true,
                     groups: getTestGroups()
                 });
@@ -307,7 +307,7 @@
             });
 
             QUnit.test('applyGroupClassification moves group items to target category', function(assert) {
-                const classifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                const classifier = new ClassifyIt(getTestCategories(), getTestItems(), {
                     showGroupMethod: true,
                     groups: getTestGroups()
                 });
@@ -341,7 +341,7 @@
         QUnit.module('Search Functionality', function() {
             
             QUnit.test('Search filters items correctly', function(assert) {
-                const classifier = new ocClasificame(getTestCategories(), getTestItems());
+                const classifier = new ClassifyIt(getTestCategories(), getTestItems());
                 const dialogPromise = classifier.openDialog();
                 dialogPromise.catch(() => {}); // Suppress rejection
 
@@ -363,7 +363,7 @@
             });
 
             QUnit.test('Search is case insensitive', function(assert) {
-                const classifier = new ocClasificame(getTestCategories(), getTestItems());
+                const classifier = new ClassifyIt(getTestCategories(), getTestItems());
                 const dialogPromise = classifier.openDialog();
                 dialogPromise.catch(() => {}); // Suppress rejection
 
@@ -380,7 +380,7 @@
         QUnit.module('Classification Templates', function() {
             
             QUnit.test('applyClassification applies saved classification correctly', function(assert) {
-                const classifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                const classifier = new ClassifyIt(getTestCategories(), getTestItems(), {
                     savedClassifications: getSavedClassifications()
                 });
 
@@ -420,7 +420,7 @@
             });
 
             QUnit.test('applyClassification with non-existent classification', function(assert) {
-                const classifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                const classifier = new ClassifyIt(getTestCategories(), getTestItems(), {
                     savedClassifications: getSavedClassifications()
                 });
 
@@ -458,7 +458,7 @@
             
             QUnit.test('openDialog creates and shows dialog', function(assert) {
                 const done = assert.async();
-                const classifier = new ocClasificame(getTestCategories(), getTestItems());
+                const classifier = new ClassifyIt(getTestCategories(), getTestItems());
                 
                 const dialogPromise = classifier.openDialog({
                     title: 'Test Dialog'
@@ -484,7 +484,7 @@
 
             QUnit.test('closeDialog with save returns values', function(assert) {
                 const done = assert.async();
-                const classifier = new ocClasificame(getTestCategories(), getTestItems());
+                const classifier = new ClassifyIt(getTestCategories(), getTestItems());
                 
                 const dialogPromise = classifier.openDialog();
                 
@@ -502,10 +502,10 @@
             });
 
             QUnit.test('Dialog title includes read-only indicator', function(assert) {
-                const editableClassifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                const editableClassifier = new ClassifyIt(getTestCategories(), getTestItems(), {
                     editable: true
                 });
-                const readOnlyClassifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                const readOnlyClassifier = new ClassifyIt(getTestCategories(), getTestItems(), {
                     editable: false
                 });
                 
@@ -534,7 +534,7 @@
                     {id: 3, name: "Banana", category: "none"}
                 ];
                 
-                const classifier = new ocClasificame(getTestCategories(), unsortedItems);
+                const classifier = new ClassifyIt(getTestCategories(), unsortedItems);
                 const dialogPromise = classifier.openDialog();
                 dialogPromise.catch(() => {}); // Suppress rejection
                 
@@ -557,14 +557,14 @@
             
             QUnit.test('Empty categories array', function(assert) {
                 assert.throws(() => {
-                    new ocClasificame([], getTestItems());
+                    new ClassifyIt([], getTestItems());
                 }, 'Constructor should handle empty categories gracefully');
             });
 
             QUnit.test('Empty items array', function(assert) {
-                const classifier = new ocClasificame(getTestCategories(), []);
+                const classifier = new ClassifyIt(getTestCategories(), []);
                 
-                assert.ok(classifier instanceof ocClasificame, 'Instance created with empty items');
+                assert.ok(classifier instanceof ClassifyIt, 'Instance created with empty items');
                 const dialogPromise = classifier.openDialog();
                 dialogPromise.catch(() => {}); // Suppress rejection
                 const values = classifier.getValue();
@@ -579,7 +579,7 @@
                     {id: 1, name: "Second John", category: "read"}
                 ];
                 
-                const classifier = new ocClasificame(getTestCategories(), duplicateItems);
+                const classifier = new ClassifyIt(getTestCategories(), duplicateItems);
                 const dialogPromise = classifier.openDialog();
                 dialogPromise.catch(() => {}); // Suppress rejection
                 const values = classifier.getValue();
@@ -595,7 +595,7 @@
                 
                 // Should not crash when items don't have the expected ID property
                 assert.throws(() => {
-                    const classifier = new ocClasificame(getTestCategories(), itemsWithoutId);
+                    const classifier = new ClassifyIt(getTestCategories(), itemsWithoutId);
 
                     classifier.getValue();
                 }, 'Should handle missing ID properties gracefully');
@@ -611,7 +611,7 @@
                     {userId: 'u2', fullName: "User Two", permission: "read"}
                 ];
                 
-                const classifier = new ocClasificame(getTestCategories(), customItems, {
+                const classifier = new ClassifyIt(getTestCategories(), customItems, {
                     valueId: 'userId',
                     valueDisplay: 'fullName',
                     itemsCategoryIdKey: 'permission'
@@ -624,12 +624,12 @@
             });
 
             QUnit.test('showPlantillaMethod and showGroupMethod flags', function(assert) {
-                const classifierBoth = new ocClasificame(getTestCategories(), getTestItems(), {
+                const classifierBoth = new ClassifyIt(getTestCategories(), getTestItems(), {
                     showPlantillaMethod: true,
                     showGroupMethod: true
                 });
                 
-                const classifierNeither = new ocClasificame(getTestCategories(), getTestItems(), {
+                const classifierNeither = new ClassifyIt(getTestCategories(), getTestItems(), {
                     showPlantillaMethod: false,
                     showGroupMethod: false
                 });
@@ -647,7 +647,7 @@
             
             QUnit.test('Complete workflow: open, modify, save', function(assert) {
                 const done = assert.async();
-                const classifier = new ocClasificame(getTestCategories(), getTestItems());
+                const classifier = new ClassifyIt(getTestCategories(), getTestItems());
                 
                 const dialogPromise = classifier.openDialog({
                     title: 'Integration Test'
@@ -677,7 +677,7 @@
             });
 
             QUnit.test('Read-only mode prevents modifications', function(assert) {
-                const classifier = new ocClasificame(getTestCategories(), getTestItems(), {
+                const classifier = new ClassifyIt(getTestCategories(), getTestItems(), {
                     editable: false
                 });
 

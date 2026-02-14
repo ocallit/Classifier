@@ -1,8 +1,8 @@
-# ocClasificame a Classifier
+# ClassifyIt a Classifier
 Utils to classify items
 
 
-**ocClasificame** is a lightweight, interactive JavaScript widget designed for categorizing items into distinct buckets.
+**ClassifyIt** is a lightweight, interactive JavaScript widget designed for categorizing items into distinct buckets.
 It provides a modal-driven interface for managing permissions, product categories, user roles, and more.
 
 ## 🚀 Key Features
@@ -19,7 +19,7 @@ It provides a modal-driven interface for managing permissions, product categorie
 * **Read-Only Mode**: A secure viewing mode that disables modifications while maintaining the visual layout.
 
 ## 🧠 AI & Developer Reference
-* **Core Logic:** [oc_clasificame_docs.md](oc_clasificame_docs.md) API, options, events
+* **Core Logic:** [classifyIt_docs.md](docs/classifyIt_docs.md) API, options, events
 > **Integration Note:** This widget is agnostic to the project's data model.
 > **AI Instruction:** When implementing, you MUST map the project's specific database fields (e.g., `product_id`, `sku`) to the widget's expected `id` and `name` format during initialization. Do not rename project variables to match this documentation. code here is example to code must be adapted to the project
 
@@ -28,10 +28,12 @@ It provides a modal-driven interface for managing permissions, product categorie
 Ensure you include the required dependency and project files in your HTML:
 
 ```html
-<script src="[https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js](https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js)"></script>
 
-<link rel="stylesheet" href="src/oc_clasificame.css">
-<script src="src/oc_clasificame.js"></script>
+<script
+    src="[https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js](https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js)"></script>
+
+<link rel="stylesheet" href="src/classifyIt.css">
+<script src="src/classifyIt.js"></script>
 ```
 
 ## 🛠 Basic Usage
@@ -50,7 +52,7 @@ const items = [
     { id: 2, name: "Jane Smith", category: "read" }
 ];
 
-const classifier = new ocClasificame(categories, items, {
+const classifier = new ClassifyIt(categories, items, {
     title: 'User Permissions',
     editable: true
 });
@@ -87,14 +89,14 @@ Beyond moving items individually, the widget supports batch operations through a
 * **Dynamic Loading**: Groups can be defined locally in the configuration or fetched from external API endpoints.
 
 ### Composite Groups (The Recursion "Trick")
-A unique architectural feature of `ocClasificame` is its ability to handle "groups of groups" through recursive instantiation.
+A unique architectural feature of `ClassifyIt` is its ability to handle "groups of groups" through recursive instantiation.
 * **Self-Calling Logic**: When managing groups, the widget can open a second instance of itself to treat existing groups as items.
 * **Recursion Guard**: To prevent infinite loops, the child instance is explicitly configured with `crudGroupMethod: false`, which acts as a critical safety flag.
 * **Use Case**: This allows users to classify base groups into higher-level "Composite Groups" using the same familiar drag-and-drop interface.
 
 ## ⚙️ Configuration Options
 
-The `ocClasificame` constructor accepts an optional `options` object to customize the widget's behavior and appearance.
+The `ClassifyIt` constructor accepts an optional `options` object to customize the widget's behavior and appearance.
 
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
@@ -116,11 +118,11 @@ The `ocClasificame` constructor accepts an optional `options` object to customiz
 
 ## 🧪 Testing
 
-The `ocClasificame` widget includes a comprehensive automated test suite built with **QUnit** to ensure stability across updates.
+The `ClassifyIt` widget includes a comprehensive automated test suite built with **QUnit** to ensure stability across updates.
 
 ### Running Tests
 To execute the test suite, open the following file in any modern web browser:
-`test/oc_clasificame_tests.html`
+`test/classifyIt_tests.html`
 
 
 ## 📄 License

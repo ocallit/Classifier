@@ -1,19 +1,19 @@
-# ocClasificame Widget Documentation
-> **Context:** This file serves as the Single Source of Truth (SSOT) for the `oc_clasificame` module.
+# ClassifyIt Widget Documentation
+> **Context:** This file serves as the Single Source of Truth (SSOT) for the `classifyIt` module.
 > **Scope:** Defines data structures, UI naming conventions, and logic flow.
 > **Integration Note:** This widget is agnostic to the project's data model.
 > **AI Instruction:** When implementing, you MUST map the project's specific database fields (e.g., `product_id`, `sku`) to the widget's expected `id` and `name` format during initialization. Do not rename project variables to match this documentation. code here is example to code must be adapted to the project
 
 ## Overview
 
-`ocClasificame` is a JavaScript widget for creating interactive classification interfaces. It allows users to categorize items using drag-and-drop functionality, individual item buttons, template management, and group-based classification. The widget supports both editable and read-only modes.
+`ClassifyIt` is a JavaScript widget for creating interactive classification interfaces. It allows users to categorize items using drag-and-drop functionality, individual item buttons, template management, and group-based classification. The widget supports both editable and read-only modes.
 
 
 
 ## Constructor
 
 ```javascript
-new ocClasificame(categories, items, options = {})
+new ClassifyIt(categories, items, options = {})
 ```
 
 ### Parameters
@@ -195,7 +195,7 @@ const users = [
     { id: 2, name: 'Jane Smith', category: 'read' }
 ];
 
-const clasificame = new ocClasificame(categories, users, {
+const clasificame = new ClassifyIt(categories, users, {
     title: 'User Permissions',
     editable: true,
     showToolbar: true
@@ -213,7 +213,7 @@ try {
 ### Read-Only Mode Example code
 
 ```javascript
-const clasificame = new ocClasificame(categories, users, {
+const clasificame = new ClassifyIt(categories, users, {
     title: 'View Permissions',
     editable: false,
     showToolbar: false
@@ -244,7 +244,7 @@ const savedTemplates = [
     }
 ];
 
-const clasificame = new ocClasificame(categories, users, {
+const clasificame = new ClassifyIt(categories, users, {
     title: 'User Permissions',
     editable: true,
     savedClassifications: savedTemplates,
@@ -261,7 +261,7 @@ const groups = [
     { id: 'users', name: 'Regular Users', itemCount: 5 }
 ];
 
-const clasificame = new ocClasificame(categories, users, {
+const clasificame = new ClassifyIt(categories, users, {
     title: 'User Permissions',
     editable: true,
     showGroupMethod: true,
@@ -273,14 +273,14 @@ const clasificame = new ocClasificame(categories, users, {
 ### Custom Default Category Example code
 
 ```javascript
-const clasificame = new ocClasificame(categories, users, {
+const clasificame = new ClassifyIt(categories, users, {
     title: 'User Permissions',
     unassignedDefaultTo: 'read', // Items with invalid categories go to 'read'
     editable: true
 });
 ```
 
-## ocClasificame Widget Event Handling
+## ClassifyIt Widget Event Handling
 
 ### Success (Save)
 
@@ -299,7 +299,7 @@ try {
 }
 ```
 
-### ocClasificame Widget Cancellation
+### ClassifyIt Widget Cancellation
 
 The Promise rejects in these scenarios:
 - User clicks "Cancel" button
@@ -319,7 +319,7 @@ try {
 }
 ```
 
-## ocClasificame Widget CSS Customization
+## ClassifyIt Widget CSS Customization
 
 The widget uses CSS classes prefixed with `oc-`. Key classes:
 
@@ -331,7 +331,7 @@ The widget uses CSS classes prefixed with `oc-`. Key classes:
 - `.oc-classification-manager` - Template management area
 - `.oc-group-section` - Group management area
 
-## ocClasificame Widget Browser Compatibility
+## ClassifyIt Widget Browser Compatibility
 
 - Requires modern browser with support for:
   - ES6 classes and async/await
@@ -344,13 +344,13 @@ The widget uses CSS classes prefixed with `oc-`. Key classes:
 - **SortableJS**: Required for drag-and-drop functionality See `../docs/sortablejs_guide.md` for api, options and event summary
 - **Font Awesome**: Optional, for icons in UI buttons
 
-## ocClasificame Widget Best Practices
+## ClassifyIt Widget Best Practices
 
 1. **Set appropriate default category** using `unassignedDefaultTo` for data integrity
 2. **Use read-only mode** for display-only scenarios to prevent accidental changes
 
 
-## ocClasificame Widget Error Handling
+## ClassifyIt Widget Error Handling
 
 Common error scenarios:
 - Empty categories array → Widget initialization fails
