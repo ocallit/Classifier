@@ -4,20 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TagIt Demo</title>
+
+    <!-- ClassifyIt dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../src/ClassifyIt.css">
+    <script src="../src/ClassifyIt.js"></script>
+
+    <!-- TagIt dependencies -->
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
+    <link rel="stylesheet" href="../src/TagIt.css">
+    <script src="../src/DialogIt.js"></script>
+    <script src="../src/TagIt.js"></script>
+
     <style>
-        select {background-color: white;}
-        .demo-container { padding: 2rem; font-family: system-ui, sans-serif; }
+        select { background-color: white; }
+        .demo-container { padding: 2rem; font-family: system-ui, sans-serif; max-width: 50em; }
         .demo-section { margin-bottom: 2rem; padding: 1rem; border: 1px solid #dee2e6; border-radius: 6px; }
         .demo-section h2 { margin-top: 0; font-size: 1.1rem; color: #2c3e50; }
         .demo-section p { font-size: 0.85rem; color: #6c757d; margin: 0.5rem 0; }
+        .demo-section code { background: #f0f0f0; padding: 2px 5px; border-radius: 3px; font-size: 0.8rem; }
     </style>
-    <style id="common-to-all-pages">
 
+    <style id="common-to-all-pages">
         .ontoy-dlg, .ontoy-dlg * { box-sizing: border-box; }
-        /* CRITICAL UI RULE: DO NOT USE BLUR, BACKDROP-FILTER, OR GLASS-MORPHISM.
-        Reason: Causes pixelation, high GPU load, and bad UX (Governance/QA Approved).
-        Keep background-color as a simple semi-transparent hex or rgba.
-        */
         .ontoy-dlg::backdrop { background-color: transparent; backdrop-filter: none !important; }
         .ontoy-dlg[open] { display: flex; flex-direction: column; }
         .ontoy-dlg {
@@ -41,90 +52,38 @@
             background: white;
             font-family: system-ui, -apple-system, sans-serif;
         }
-
         .ontoy-dlg-header {
-            background: #2c3e50;
-            color: white;
-            padding: 12px 16px;
-            width: 100%;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            align-items: center;
-            cursor: move;
-            flex: 0 0 auto;
-            user-select: none;
+            background: #2c3e50; color: white; padding: 12px 16px; width: 100%;
+            display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+            cursor: move; flex: 0 0 auto; user-select: none;
         }
-
         .ontoy-dlg-content {
-            padding: 1rem;
-            display: flex;
-            flex-direction: column;
-            justify-content: start;
-            gap: 1rem;
-            flex: 1 1 auto;
-            min-height: 100px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            width: 100%;
+            padding: 1rem; display: flex; flex-direction: column; justify-content: start;
+            gap: 1rem; flex: 1 1 auto; min-height: 100px;
+            overflow-y: auto; overflow-x: hidden; width: 100%;
         }
-
         .ontoy-dlg-footer {
-            padding: 1rem;
-            border-top: 1px solid #e2e8f0;
-            background: #f8fafc;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-            gap: 0.75rem;
-            width: 100%;
-            flex: 0 0 auto;
+            padding: 1rem; border-top: 1px solid #e2e8f0; background: #f8fafc;
+            display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.75rem;
+            width: 100%; flex: 0 0 auto;
         }
-
         .ontoy-dlg-close {
-            cursor: pointer;
-            background: none;
-            border: none;
-            color: white;
-            font-size: 1.5rem;
-            line-height: 1;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            transition: background 0.2s;
+            cursor: pointer; background: none; border: none; color: white;
+            font-size: 1.5rem; line-height: 1; width: 32px; height: 32px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 4px; transition: background 0.2s;
         }
         .ontoy-dlg-close:hover { background: rgba(255,255,255,0.1); }
-
-
-        @media print {
-            .ontoy-topbar, .ontoy-feature-header, .ontoy-dlg, .favmnu-dropdown, .mainmnu-dropdown,
-            button, input[type='submit'], input[type='reset'], input[type="image"]
-            { display: none !important; }
-            [data-noprint] { display: none !important; }
-            .noprint { display: none !important; }
-            main { width: 100%; margin: 0; }
-        }
     </style>
-
-    <link rel="stylesheet" href="../src/TagIt.css">
-    <script src="../src/DialogUtil.js"></script>
-    <script src="../src/TagIt.js"></script>
-
-    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
-
 </head>
 <body>
     <div class="demo-container">
-        <h1>TagIt Demo</h1>
+        <h1>TagIt + ClassifyIt Demo</h1>
 
-        <!-- Demo 1: Auto-init, server-rendered options -->
+        <!-- Demo 1: Server-rendered, no classifier -->
         <div class="demo-section">
-            <h2>1. Server-rendered (auto-init via data attributes)</h2>
-            <p>Options pre-rendered in HTML. No fetch on init.</p>
+            <h2>1. Server-rendered (auto-init, no classifier)</h2>
+            <p>Standard TagIt. Options pre-rendered in HTML.</p>
             <div class="form-group" style="width:30em">
                 <label for="categories">Categorías</label>
                 <select id="categories" multiple
@@ -144,29 +103,45 @@
             </div>
         </div>
 
-        <!-- Demo 2: Programmatic init with ClassifyIt integration -->
+        <!-- Demo 2: With ClassifyIt (editable) -->
         <div class="demo-section">
-            <h2>2. With ClassifyIt integration (classifier + onClassify)</h2>
-            <p>Click 🏷️ on any tag row to open the classifier.</p>
+            <h2>2. With ClassifyIt — editable</h2>
+            <p>Click 🏷️ on any tag to open ClassifyIt. Drag products between columns to add/remove the tag.</p>
             <div class="form-group" style="width:30em">
-                <label for="categories-classify">Categorías (con Clasificador)</label>
-                <select id="categories-classify" multiple>
-                    <option value="a1">Deportes</option>
+                <label for="cat-classify-edit">Categorías (Producto: Balón Nike)</label>
+                <select id="cat-classify-edit" multiple>
+                    <option value="a1" selected="selected">Deportes</option>
                     <option value="b2">Escolar</option>
                     <option value="c3" selected="selected">Nuevo</option>
-                    <option value="d4" selected="selected">Primavera</option>
+                    <option value="d4">Primavera</option>
                     <option value="e5">Invierno</option>
                 </select>
             </div>
         </div>
 
-        <!-- Demo 3: Dynamic fetch (empty select + itemId) -->
+        <!-- Demo 3: With ClassifyIt (readonly) -->
         <div class="demo-section">
-            <h2>3. Dynamic fetch (empty select, loads from API)</h2>
-            <p>Select starts empty. Tags fetched via <code>tagGetItemTags</code> on init.</p>
+            <h2>3. With ClassifyIt — read only</h2>
+            <p>Same 🏷️ button, but ClassifyIt opens in read-only mode. No drag, no save.</p>
             <div class="form-group" style="width:30em">
-                <label for="categories-dynamic">Categorías (Producto #42)</label>
-                <select id="categories-dynamic" multiple
+                <label for="cat-classify-ro">Categorías (solo lectura)</label>
+                <select id="cat-classify-ro" multiple data-tagit-ro>
+                    <option value="a1" selected="selected">Deportes</option>
+                    <option value="b2">Escolar</option>
+                    <option value="c3" selected="selected">Nuevo</option>
+                    <option value="d4">Primavera</option>
+                    <option value="e5">Invierno</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Demo 4: Dynamic fetch -->
+        <div class="demo-section">
+            <h2>4. Dynamic fetch (empty select → <code>tagGetItemTags</code>)</h2>
+            <p>Select starts empty. Tags fetched from mock API on init.</p>
+            <div class="form-group" style="width:30em">
+                <label for="cat-dynamic">Categorías (Producto #42)</label>
+                <select id="cat-dynamic" multiple
                         data-tagit
                         data-tagit-rw
                         data-tagit-catalogid="1"
@@ -181,28 +156,47 @@
     </div>
 
     <script>
+        // ============================================================
+        // Mock data
+        // ============================================================
+        const MOCK_DELAY = 300;
 
-        // Mock API for demo purposes (override fetch)
+        const mockTags = [
+            {id: 'a1', text: 'Deportes'},
+            {id: 'b2', text: 'Escolar'},
+            {id: 'c3', text: 'Nuevo'},
+            {id: 'd4', text: 'Primavera'},
+            {id: 'e5', text: 'Invierno'}
+        ];
+
+        // Products in the catalog, each with their tag ids
+        const mockProducts = [
+            {id: 'p1',  name: 'Balón Nike',          tags: ['a1', 'c3']},
+            {id: 'p2',  name: 'Raqueta Wilson',       tags: ['a1']},
+            {id: 'p3',  name: 'Cuaderno Scribe 100h', tags: ['b2']},
+            {id: 'p4',  name: 'Mochila Jansport',     tags: ['b2', 'c3']},
+            {id: 'p5',  name: 'Guantes Térmicos',     tags: ['a1', 'e5']},
+            {id: 'p6',  name: 'Sudadera Adidas',      tags: ['a1', 'e5', 'c3']},
+            {id: 'p7',  name: 'Sandalias Playa',      tags: ['d4']},
+            {id: 'p8',  name: 'Lentes de Sol Ray-Ban', tags: ['d4', 'c3']},
+            {id: 'p9',  name: 'Patines Roller Derby',  tags: ['a1', 'd4']},
+            {id: 'p10', name: 'Plumas BIC 12 pack',   tags: ['b2']},
+            {id: 'p11', name: 'Chamarra North Face',   tags: ['e5']},
+            {id: 'p12', name: 'Gorra Under Armour',    tags: ['a1', 'd4', 'c3']}
+        ];
+
+        // Which tags does a specific item have? (for tagGetItemTags)
+        const mockItemTags = {
+            '42': ['c3', 'e5']
+        };
+
+        // ============================================================
+        // Mock fetch interceptor
+        // ============================================================
         (function() {
-            const MOCK_DELAY = 300;
-
-            let mockCategories = [
-                {id: 'a1', text: 'Deportes'},
-                {id: 'b2', text: 'Escolar'},
-                {id: 'c3', text: 'Nuevo'},
-                {id: 'd4', text: 'Primavera'},
-                {id: 'e5', text: 'Invierno'}
-            ];
-
-            // Mock: which tags does each item have?
-            const mockItemTags = {
-                '42': ['c3', 'e5'] // Producto #42 has "Nuevo" and "Invierno"
-            };
-
             const originalFetch = window.fetch;
 
             window.fetch = function(url, options) {
-                // Only intercept POST to the tagit API url
                 if(options && options.method === 'POST' && String(url).includes('tagit_api')) {
                     const params = new URLSearchParams(options.body);
                     const action = params.get('action');
@@ -217,10 +211,10 @@
                                 case 'tagGetItemTags': {
                                     const itemId = params.get('item_id');
                                     const selectedIds = mockItemTags[itemId] || [];
-                                    const tags = mockCategories.map(cat => ({
-                                        value: cat.id,
-                                        text: cat.text,
-                                        selected: selectedIds.includes(cat.id)
+                                    const tags = mockTags.map(t => ({
+                                        value: t.id,
+                                        text: t.text,
+                                        selected: selectedIds.includes(t.id)
                                     }));
                                     result = { success: true, error: null, data: { tags: tags } };
                                     break;
@@ -228,14 +222,14 @@
 
                                 case 'tagAdd': {
                                     const text = params.get('text');
-                                    const exists = mockCategories.some(item =>
-                                        item.text.toLowerCase() === text.toLowerCase()
+                                    const exists = mockTags.some(t =>
+                                        t.text.toLowerCase() === text.toLowerCase()
                                     );
                                     if(exists) {
                                         result = { success: false, error: 'Item already exists', data: null };
                                     } else {
                                         const newId = Date.now().toString();
-                                        mockCategories.push({ id: newId, text: text });
+                                        mockTags.push({ id: newId, text: text });
                                         result = { success: true, error: null, data: { id: newId } };
                                     }
                                     break;
@@ -244,9 +238,9 @@
                                 case 'tagUpdate': {
                                     const id = params.get('id');
                                     const text = params.get('text');
-                                    const idx = mockCategories.findIndex(item => item.id === id);
+                                    const idx = mockTags.findIndex(t => t.id === id);
                                     if(idx !== -1) {
-                                        mockCategories[idx].text = text;
+                                        mockTags[idx].text = text;
                                         result = { success: true, error: null, data: null };
                                     } else {
                                         result = { success: false, error: 'Item not found', data: null };
@@ -256,9 +250,9 @@
 
                                 case 'tagDelete': {
                                     const id = params.get('id');
-                                    const idx = mockCategories.findIndex(item => item.id === id);
+                                    const idx = mockTags.findIndex(t => t.id === id);
                                     if(idx !== -1) {
-                                        mockCategories.splice(idx, 1);
+                                        mockTags.splice(idx, 1);
                                         result = { success: true, error: null, data: null };
                                     } else {
                                         result = { success: false, error: 'Item not found', data: null };
@@ -275,31 +269,75 @@
                     });
                 }
 
-                // Pass through everything else
                 return originalFetch.apply(this, arguments);
             };
         })();
 
-        // Demo 2: Programmatic init with ClassifyIt integration
+        // ============================================================
+        // ClassifyIt integration helper
+        // ============================================================
+
+        /**
+         * Opens ClassifyIt for a given tag.
+         * Categories: "Con etiqueta" / "Sin etiqueta"
+         * Items: all products, placed by whether they have the tag.
+         */
+        function openClassifierForTag(tagValue, tagText, readOnly) {
+            const tag = mockTags.find(t => t.id === tagValue);
+            if(!tag) return;
+
+            const categories = [
+                { id: 'has_tag',  label: '✓', title: 'Con: ' + tagText },
+                { id: 'no_tag',   label: '✗', title: 'Sin: ' + tagText }
+            ];
+
+            const items = mockProducts.map(p => ({
+                id: p.id,
+                name: p.name,
+                category: p.tags.includes(tagValue) ? 'has_tag' : 'no_tag'
+            }));
+
+            const classifier = new ClassifyIt(categories, items, {
+                title: 'Productos — ' + tagText,
+                que_clasifica_label: 'Productos',
+                editable: !readOnly,
+                showToolbar: !readOnly,
+                showPlantillaMethod: false,
+                showGroupMethod: false
+            });
+
+            classifier.openDialog()
+                .then(result => {
+                    console.log('[ClassifyIt] Saved:', result);
+                    // In production: POST result back to sync tag assignments
+                })
+                .catch(err => {
+                    console.log('[ClassifyIt] Cancelled');
+                });
+        }
+
+        // ============================================================
+        // Programmatic TagIt inits (Demos 2 & 3)
+        // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
-            new TagIt(document.getElementById('categories-classify'), {
+
+            // Demo 2: editable + classifier
+            new TagIt(document.getElementById('cat-classify-edit'), {
                 apiUrl: './api/tagit_api.php',
                 catalogId: '1',
                 dialogTitle: 'Categorias de Productos',
                 classifier: true,
-                onClassify: (tagValue, tagText, readOnly) => {
-                    // In production, wire to ClassifyIt:
-                    //
-                    // const items = await fetchProductsByTag(tagValue);
-                    // const c = new ClassifyIt(categories, items, {
-                    //     title: `Productos: ${tagText}`,
-                    //     editable: !readOnly
-                    // });
-                    // return c.openDialog();
+                onClassify: openClassifierForTag
+            });
 
-                    const mode = readOnly ? 'readonly' : 'editable';
-                    alert(`ClassifyIt would open for:\n\nTag: "${tagText}" (${tagValue})\nMode: ${mode}`);
-                }
+            // Demo 3: readonly + classifier
+            new TagIt(document.getElementById('cat-classify-ro'), {
+                apiUrl: './api/tagit_api.php',
+                catalogId: '1',
+                dialogTitle: 'Categorias de Productos',
+                readOnly: true,
+                classifier: true,
+                onClassify: openClassifierForTag
             });
         });
     </script>

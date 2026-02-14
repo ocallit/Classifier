@@ -1,5 +1,5 @@
 
-const DialogUtil = {
+const DialogIt = {
     dragStart(e, dlg) {
         const header = e.target.closest('.ontoy-dlg-header, .dlg-header');
         if (!header || e.target.closest('button, input, select')) return;

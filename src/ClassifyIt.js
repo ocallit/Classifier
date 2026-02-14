@@ -1,7 +1,8 @@
 /**
- * Project: classifyIt
+ * Project: ClassifyIt
  * @description Main logic for classification module.
- * @see {@link ../docs/classifyIt_docs.md} - ClassifyIt API, options, events
+ * @requires DialogIt for draggable dialog support
+ * @see {@link ../docs/ClassifyIt_docs.md} - ClassifyIt API, options, events
  */
 class ClassifyIt {
     constructor(categories, items, options = {}) {
@@ -271,6 +272,9 @@ class ClassifyIt {
         `;
 
         document.body.appendChild(this.dialogElement);
+
+        // Enable drag via header
+        this.dialogElement.addEventListener('pointerdown', (e) => DialogIt.dragStart(e, this.dialogElement));
     }
 
     _dragDropColumns() {

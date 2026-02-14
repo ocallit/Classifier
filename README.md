@@ -47,8 +47,8 @@ Ensure you include the required dependency and project files in your HTML:
 <script
     src="[https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js](https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js)"></script>
 
-<link rel="stylesheet" href="src/classifyIt.css">
-<script src="src/classifyIt.js"></script>
+<link rel="stylesheet" href="src/ClassifyIt.css">
+<script src="src/ClassifyIt.js"></script>
 ```
 
 ## 🛠 Basic Usage

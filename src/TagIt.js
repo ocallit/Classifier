@@ -366,11 +366,11 @@ class TagIt {
     }
 
     showAlert(message) {
-        return DialogUtil.alert(this.escapeHtml(message), 'Aviso', 'info');
+        return DialogIt.alert(this.escapeHtml(message), 'Aviso', 'info');
     }
 
     showConfirm(message) {
-        return DialogUtil.confirm(
+        return DialogIt.confirm(
             this.escapeHtml(message),
             'Confirmar',
             'warning'
@@ -524,7 +524,7 @@ class TagIt {
             return;
         }
 
-        // Create dialog using DialogUtil
+        // Create dialog using DialogIt
         const dialog = document.createElement('dialog');
         dialog.className = 'ontoy-dlg';
         dialog.innerHTML = `
@@ -543,7 +543,7 @@ class TagIt {
         document.body.appendChild(dialog);
 
         // Setup drag
-        dialog.addEventListener('pointerdown', (e) => DialogUtil.dragStart(e, dialog));
+        dialog.addEventListener('pointerdown', (e) => DialogIt.dragStart(e, dialog));
 
         // *** CRITICAL FIX: Replace content BEFORE rendering options ***
         const contentDiv = dialog.querySelector('.ontoy-dlg-content');

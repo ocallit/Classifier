@@ -44,7 +44,7 @@ dialog.oc-dialog::backdrop {
     min-height: 400px;
     display: flex;
     flex-direction: column;
-    overflow: auto;
+    overflow: hidden;
     resize: both;
     position: relative;
 }
@@ -107,7 +107,8 @@ dialog.oc-dialog::backdrop {
     display: flex;
     flex-direction: column;
     flex: 1;
-    overflow: auto;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .oc-dialog-footer {
@@ -126,18 +127,30 @@ dialog.oc-dialog::backdrop {
 }
 
 .oc-clasificame {
-    height: 100%;
-    padding: 12px; /* Reduced padding */
-    overflow: auto;
+    flex: 1;
+    min-height: 0;
+    padding: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.oc-clasificame > *:not(.oc-columns) {
+    flex-shrink: 0;
 }
 
 .oc-search-stats-row {
-    margin-bottom: 12px; /* Reduced margin */
+    margin-bottom: 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 20px;
     flex-wrap: wrap;
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .oc-global-search {
@@ -191,23 +204,24 @@ dialog.oc-dialog::backdrop {
 
 .oc-columns {
     display: flex;
-    gap: 12px; /* Reduced gap */
+    gap: 12px;
     flex: 1;
-    /* overflow: hidden; */ /* Removed to test if this allows columns to properly size for tall item lists */
-    flex-wrap: wrap;
+    min-height: 0;
+    overflow: hidden;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .oc-column {
     flex: 1;
-    min-width: 250px;
+    min-width: 150px;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     background: white;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    /* overflow: hidden; */ /* This was commented out in a previous step, let's ensure it stays that way or is definitively removed. */
-    /* For this task, we are confirming its removal or ensuring it's not the cause. */
-    /* If it was already commented, no change. If it was active, it's now removed. */
+    overflow: hidden;
 }
 
 .oc-column-header {
@@ -228,12 +242,15 @@ dialog.oc-dialog::backdrop {
 .oc-items-list {
     margin: 0;
     padding: 0.1em 0.5em;
-    overflow-y: scroll;
-    overflow-x: auto;
-    height:300px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    min-height: 0;
     scrollbar-width: auto;
     background: whitesmoke;
     scrollbar-color: darkgreen silver;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 
@@ -352,11 +369,12 @@ dialog.oc-dialog::backdrop {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 4px 12px; /* Reduced vertical padding */
+    padding: 4px 12px;
     background: #f8f9fa;
     border-top: 1px solid #e0e0e0;
     flex-wrap: wrap;
     gap: 8px;
+    flex-shrink: 0;
 }
 
 .oc-nav-btn {
@@ -722,10 +740,16 @@ dialog.oc-dialog::backdrop {
     
     .oc-columns {
         flex-direction: column;
+        overflow-y: auto;
     }
     
     .oc-column {
         min-width: auto;
+        min-height: 200px;
+    }
+
+    .oc-items-list {
+        min-height: 120px;
     }
 }
 
