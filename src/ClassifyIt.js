@@ -5,6 +5,8 @@
  * @see {@link ../docs/ClassifyIt_docs.md} - ClassifyIt API, options, events
  */
 class ClassifyIt {
+
+    /** Sets up the internal state, merges configuration options, and identifies the default category for unassigned items. */
     constructor(categories, items, options = {}) {
         this.categories = categories;
         this.items = items;
@@ -18,13 +20,17 @@ class ClassifyIt {
             itemsCategoryIdKey: 'category',
 
             editable: true,
-            showToolbar: true,
+            showItemButtons: true,
+
             savedClassifications: [],
-            showPlantillaMethod: true,
-            canSavePlantillaMethod: false,
-            showGroupMethod: false,
-            crudGroupMethod: false,
+
+            groupEnabled: false,
+            groupEditable: false,
             groups: [],
+
+            presetsEnabled: true,
+            presetsEditable: false,
+
             apiEndpoints: {
                 save: '/api/classifications/save', // For main classifications
                 load: '/api/classifications/list',
@@ -52,12 +58,13 @@ class ClassifyIt {
     }
 
 
+    /** Assembles the complete inner HTML of the widget, combining the manager areas, search bar, and item columns. */
     createContent() {
 
         let classificationManagerHTML = "<div>";
-        if(this.options.showPlantillaMethod)
+        if(this.options.presetsEnabled)
             classificationManagerHTML += this._createClassificationManagerHTML();
-        if(this.options.showGroupMethod)
+        if(this.options.groupEnabled)
             classificationManagerHTML += this._createGroupManagerHTML();
         classificationManagerHTML += "</div>";
 
@@ -85,6 +92,7 @@ class ClassifyIt {
         `;
     }
 
+    /** Scans the current DOM structure to build a map of which item IDs are physically located in which category columns. */
     getValue() {
         const result = {};
         this.categories.forEach(category => {
@@ -106,6 +114,7 @@ class ClassifyIt {
         return result;
     }
 
+    /** Displays the modal, initializes drag-and-drop libraries, attaches event listeners, and returns a promise that resolves upon saving */
     openDialog(dialogOptions = {}) {
         return new Promise((resolve, reject) => {
             this.resolve = resolve;
@@ -140,6 +149,7 @@ class ClassifyIt {
         });
     }
 
+    /** Triggers the promise resolution or rejection, destroys active library instances, and cleans up the DOM elements..*/
     closeDialog(save = false) {
         this.isClosingProgrammatically = true; // Set flag
 
@@ -232,6 +242,7 @@ class ClassifyIt {
         });
     }
 
+    /** Generates the high-level modal structure (header, body, and footer) and attaches it to the document body. */
     _createDialog(dialogOptions) {
         const defaultOptions = {
             title: this.options.title,
@@ -277,6 +288,7 @@ class ClassifyIt {
         this.dialogElement.addEventListener('pointerdown', (e) => DialogIt.dragStart(e, this.dialogElement));
     }
 
+    /** Iterates through category data to build the individual column containers and their navigation footers. */
     _dragDropColumns() {
         return this.categories.map((category, index) => {
             const isFirst = index === 0;
@@ -321,12 +333,13 @@ class ClassifyIt {
         }).join('');
     }
 
+    /** Produces the interface for selecting, applying, and managing saved state templates. */
     _createClassificationManagerHTML() {
         const savedOptions = this.options.savedClassifications.map(classification => 
             `<option value="${classification.id}" data-description="${classification.description}">${classification.name}</option>`
         ).join('');
 
-        const editarPlantillas = this.options.canSavePlantillaMethod && this.options.showPlantillaMethod ?
+        const editarPlantillas = this.options.presetsEditable && this.options.presetsEnabled ?
             `<button class="oc-manager-btn save" id="new-classification">New</button>
              <button class="oc-manager-btn save" id="edit-classification">Edit</button>
              <button class="oc-manager-btn save" id="del-classification">Del</button>
@@ -348,6 +361,7 @@ class ClassifyIt {
         `;
     }
 
+    /** Builds the controls used to select collections of items and move them to a specific destination category. */
     _createGroupManagerHTML() {
         const groupOptions = this.options.groups.map(group =>
             `<option value="${group.id}">${group.name} (${group.itemCount} ${this.options.que_clasifica_label})</option>`
@@ -378,7 +392,7 @@ class ClassifyIt {
                         <label>&nbsp;</label>
                         <button class="oc-group-btn" id="apply-group-classification" disabled>¡Ponlos!</button>
                     </div>
-                    ${this.options.crudGroupMethod && this.options.editable ? `
+                    ${this.options.groupEditable && this.options.editable ? `
                     <div class="oc-group-control">
                         <label>&nbsp;</label> <!-- For alignment -->
                         <button class="oc-btn" id="oc-manage-groups-btn">Manage Groups</button>
@@ -387,6 +401,7 @@ class ClassifyIt {
                 </div>`;
     }
 
+    /** Maps the item data into draggable HTML elements containing labels and action buttons. */
     _createItemsHTML(categoryId) {
         // Get the default category ID
         const defaultCategoryId = this._getDefaultCategoryId();
@@ -401,8 +416,8 @@ class ClassifyIt {
             const itemLabel = item[this.options.valueDisplay];
             const currentCategory = item[this.options.itemsCategoryIdKey] || defaultCategoryId;
 
-            // Hide toolbar if not editable or showToolbar is false
-            const toolbarHTML = this.options.editable && this.options.showToolbar ? `
+            // Hide individual item classification buttons if not editable or showItemButtons is false
+            const toolbarHTML = this.options.editable && this.options.showItemButtons ? `
                 <div class="oc-item-toolbar">
                     ${this.categories.map(cat => `
                         <button class="oc-item-btn ${currentCategory === cat.id ? 'pressed' : ''}" 
@@ -426,6 +441,7 @@ class ClassifyIt {
         }).join('');
     }
 
+    /** Configures the Sortable.js that enables drag-and-drop movement and handles the logic for updating item metadata after a drop */
     _setupSortable() {
         if(!this.options.editable)
             return;
@@ -477,6 +493,8 @@ class ClassifyIt {
         });
     }
 
+
+    /** adds event listeners standard click actions for dialog closing, saving, and general UI interactions. */
     _setupEventListeners() {
         this.dialogElement.querySelector('.oc-dialog-close').addEventListener('click', () => {
             this.closeDialog(false);
@@ -508,20 +526,36 @@ class ClassifyIt {
         }
 
         if(this.options.editable) {
-            if(this.options.showPlantillaMethod)
-                this._setupPlantillaModeListeners();
-            if(this.options.showGroupMethod)
+            // each item click to move to another category listener
+            if(this.options.showItemButtons)
+                this.dialogElement.addEventListener('click', (e) => {
+                    if(e.target.classList.contains('oc-item-btn')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const targetCategory = e.target.dataset.target;
+                        const itemId = e.target.dataset.itemId;
+                        this._moveItemTo(itemId, targetCategory);
+                    }
+                });
+            // move visible items left and/or right listeners
+            this.dialogElement.addEventListener('click', (e) => {
+                if(e.target.closest('.oc-nav-btn')) {
+                    const btn = e.target.closest('.oc-nav-btn');
+                    const fromCategory = btn.dataset.from;
+                    const toCategory = btn.dataset.to;
+                    this._moveVisibleItems(fromCategory, toCategory);
+                }
+            });
+            if(this.options.presetsEnabled) {
+                if(this.options.presetsEditable || this.options.savedClassifications.length > 0) {
+                    this._setupPlantillaManager();
+                }
+            }
+
+            if(this.options.groupEnabled)
                 this._setupGroupModeListeners();
-        }
 
-
-
-        // Click-outside-to-closeDialog for native <dialog>
-
-
-
-        // Centralized sort button listener
-        if(this.options.editable) { // Sort is an edit operation
+            // Sort item buttons
             this.dialogElement.addEventListener('click', (e) => {
                 const sortButton = e.target.closest('.oc-sort-btn');
                 if(sortButton) {
@@ -537,6 +571,7 @@ class ClassifyIt {
         this._setupSearchEventListeners();
     }
 
+    /** Attaches input and click handlers to the filtering field to provide real-time list updates. */
     _setupSearchEventListeners() {
         const globalSearchInput = this.dialogElement.querySelector('.oc-search-input');
         if(globalSearchInput) {
@@ -554,37 +589,12 @@ class ClassifyIt {
         }
     }
 
-    _setupPlantillaModeListeners() {
-        if(!this.options.editable) return; // Keep this guard for other editable actions
 
-        // Search listeners moved to _setupSearchEventListeners / _setupEventListeners
 
-        this.dialogElement.addEventListener('click', (e) => {
-            if(e.target.classList.contains('oc-item-btn')) {
-                e.preventDefault();
-                e.stopPropagation();
-                const targetCategory = e.target.dataset.target;
-                const itemId = e.target.dataset.itemId;
-                this._moveItemTo(itemId, targetCategory);
-            }
-        });
 
-        this.dialogElement.addEventListener('click', (e) => {
-            if(e.target.closest('.oc-nav-btn')) {
-                const btn = e.target.closest('.oc-nav-btn');
-                const fromCategory = btn.dataset.from;
-                const toCategory = btn.dataset.to;
-                this._moveVisibleItems(fromCategory, toCategory);
-            }
-        });
-
-        if(this.options.canSavePlantillaMethod || this.options.savedClassifications.length > 0) {
-            this._setupPlantillaManager();
-        }
-    }
-
+    /** Coordinates selection changes and button clicks for the bulk-moving group classification feature */
     _setupGroupModeListeners() {
-        if(this.options.crudGroupMethod) { // Check if the feature is enabled
+        if(this.options.groupEditable) { // Check if the feature is enabled
             const manageGroupsBtn = this.dialogElement.querySelector('#oc-manage-groups-btn');
             if(manageGroupsBtn) {
                 manageGroupsBtn.addEventListener('click', () => {
@@ -596,11 +606,11 @@ class ClassifyIt {
                     const childInstanceOptions = {
                         title: 'Create Composite Group',
                         editable: true,
-                        showToolbar: true,
-                        showPlantillaMethod: false,
-                        canSavePlantillaMethod: false,
-                        showGroupMethod: true,
-                        crudGroupMethod: false, // CRITICAL: Prevent recursion
+                        showItemButtons: true,
+                        presetsEnabled: false,
+                        presetsEditable: false,
+                        groupEnabled: true,
+                        groupEditable: false, // CRITICAL: Prevent recursion
                         valueId: 'id',
                         valueDisplay: 'name',
                         itemsCategoryIdKey: 'category',
@@ -767,6 +777,7 @@ class ClassifyIt {
         this._updateCounters();
     }
 
+    /** Manages the logic for the template dropdown selection and enabling the "Apply" functionality. */
     _setupPlantillaManager() {
         if(!this.options.editable) return;
 

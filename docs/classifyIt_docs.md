@@ -53,12 +53,12 @@ new ClassifyIt(categories, items, options = {})
 | `valueDisplay` | String | `'name'` | Property name for item display text |
 | `itemsCategoryIdKey` | String | `'category'` | Property name for item's current category |
 | `editable` | Boolean | `true` | Whether classification can be modified |
-| `showToolbar` | Boolean | `true` | Show individual item action buttons |
+| `showItemButtons` | Boolean | `true` | Show individual item action buttons |
 | `savedClassifications` | Array | `[]` | Array of saved classification templates |
-| `showPlantillaMethod` | Boolean | `true` | Enable template/individual classification mode |
-| `canSavePlantillaMethod` | Boolean | `false` | Allow saving new templates |
-| `showGroupMethod` | Boolean | `false` | Enable group-based classification mode |
-| `crudGroupMethod` | Boolean | `false` | Allow creating/editing groups |
+| `presetsEnabled` | Boolean | `true` | Enable template/individual classification mode |
+| `presetsEditable` | Boolean | `false` | Allow saving new templates |
+| `groupEnabled` | Boolean | `false` | Enable group-based classification mode |
+| `groupEditable` | Boolean | `false` | Allow creating/editing groups |
 | `groups` | Array | `[]` | Array of available groups |
 | `apiEndpoints` | Object | See below | API endpoint configurations |
 | `debug` | Boolean | `false` | Enable debug logging |
@@ -198,7 +198,7 @@ const users = [
 const clasificame = new ClassifyIt(categories, users, {
     title: 'User Permissions',
     editable: true,
-    showToolbar: true
+    showItemButtons: true
 });
 
 try {
@@ -216,7 +216,7 @@ try {
 const clasificame = new ClassifyIt(categories, users, {
     title: 'View Permissions',
     editable: false,
-    showToolbar: false
+    showItemButtons: false
 });
 
 try {
@@ -248,8 +248,8 @@ const clasificame = new ClassifyIt(categories, users, {
     title: 'User Permissions',
     editable: true,
     savedClassifications: savedTemplates,
-    showPlantillaMethod: true,
-    canSavePlantillaMethod: true
+    presetsEnabled: true,
+    presetsEditable: true
 });
 ```
 
@@ -264,8 +264,8 @@ const groups = [
 const clasificame = new ClassifyIt(categories, users, {
     title: 'User Permissions',
     editable: true,
-    showGroupMethod: true,
-    crudGroupMethod: true,
+    groupEnabled: true,
+    groupEditable: true,
     groups: groups
 });
 ```

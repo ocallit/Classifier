@@ -106,7 +106,7 @@ Beyond moving items individually, the widget supports batch operations through a
 ### Composite Groups (The Recursion "Trick")
 A unique architectural feature of `ClassifyIt` is its ability to handle "groups of groups" through recursive instantiation.
 * **Self-Calling Logic**: When managing groups, the widget can open a second instance of itself to treat existing groups as items.
-* **Recursion Guard**: To prevent infinite loops, the child instance is explicitly configured with `crudGroupMethod: false`, which acts as a critical safety flag.
+* **Recursion Guard**: To prevent infinite loops, the child instance is explicitly configured with `groupEditable: false`, which acts as a critical safety flag.
 * **Use Case**: This allows users to classify base groups into higher-level "Composite Groups" using the same familiar drag-and-drop interface.
 
 ## ⚙️ Configuration Options
@@ -121,12 +121,12 @@ The `ClassifyIt` constructor accepts an optional `options` object to customize t
 | `valueDisplay` | String | `'name'` | The property name in the items array used for display labels. |
 | `itemsCategoryIdKey` | String | `'category'` | The property name in the items array that stores the category ID. |
 | `editable` | Boolean | `true` | When `false`, disables drag-and-drop, hides toolbars, and sets the interface to read-only. |
-| `showToolbar` | Boolean | `true` | Determines whether the quick-action category buttons are visible on each item. |
+| `showItemButtons` | Boolean | `true` | Determines whether the quick-action category buttons are visible on each item. |
 | `unassignedDefaultTo` | String | `null` | Category ID where items with invalid or missing categories are placed. |
-| `showPlantillaMethod` | Boolean | `true` | Enables the template management interface (Plantillas). |
-| `canSavePlantillaMethod` | Boolean | `false` | Allows users to save current classifications as new templates. |
-| `showGroupMethod` | Boolean | `false` | Enables the group-based classification interface. |
-| `crudGroupMethod` | Boolean | `false` | Enables the "Manage Groups" button for recursive composite group creation. |
+| `presetsEnabled` | Boolean | `true` | Enables the template management interface (Plantillas). |
+| `presetsEditable` | Boolean | `false` | Allows users to save current classifications as new templates. |
+| `groupEnabled` | Boolean | `false` | Enables the group-based classification interface. |
+| `groupEditable` | Boolean | `false` | Enables the "Manage Groups" button for recursive composite group creation. |
 | `savedClassifications` | Array | `[]` | Initial list of predefined classification templates. |
 | `groups` | Array | `[]` | Initial list of available groups for batch classification. |
 | `apiEndpoints` | Object | `{...}` | Configuration for API URLs used for saving, loading, and group management. |

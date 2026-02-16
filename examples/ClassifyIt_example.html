@@ -175,12 +175,12 @@
                 valueDisplay: 'name',
                 valueColumnKey: 'category',
                 editable: true,
-                showToolbar: true,
+                showItemButtons: true,
                 savedClassifications: savedClassifications,
-                showPlantillaMethod: true,
-                canSavePlantillaMethod: false,
-                showGroupMethod: false,
-                crudGroupMethod: false,
+                presetsEnabled: true,
+                presetsEditable: false,
+                groupEnabled: false,
+                groupEditable: false,
                 groups: sampleGroups
             });
 
@@ -204,12 +204,12 @@
                 valueDisplay: 'name',
                 valueColumnKey: 'category',
                 editable: true,
-                showToolbar: true,
+                showItemButtons: true,
                 savedClassifications: savedClassifications,
-                showPlantillaMethod: false,
-                canSavePlantillaMethod: false,
-                showGroupMethod: true,
-                crudGroupMethod:true,
+                presetsEnabled: false,
+                presetsEditable: false,
+                groupEnabled: true,
+                groupEditable:true,
                 groups: sampleGroups
             });
 
@@ -233,12 +233,12 @@
                 valueDisplay: 'name',
                 valueColumnKey: 'category',
                 editable: true,
-                showToolbar: true,
+                showItemButtons: true,
                 savedClassifications: savedClassifications,
-                showPlantillaMethod: true,
-                canSavePlantillaMethod: true,
-                showGroupMethod: false,
-                crudGroupMethod: false,
+                presetsEnabled: true,
+                presetsEditable: true,
+                groupEnabled: false,
+                groupEditable: false,
                 groups: sampleGroups,
             });
 
@@ -263,12 +263,12 @@
                 valueDisplay: 'name',
                 valueColumnKey: 'category',
                 editable: false, // READ-ONLY MODE
-                showToolbar: true,
+                showItemButtons: true,
                 savedClassifications: savedClassifications,
-                showPlantillaMethod: true,
-                canSavePlantillaMethod: false,
-                showGroupMethod: false,
-                crudGroupMethod: false,
+                presetsEnabled: true,
+                presetsEditable: false,
+                groupEnabled: false,
+                groupEditable: false,
                 groups: sampleGroups
             });
 
@@ -303,12 +303,12 @@
                 valueDisplay: 'name',
                 valueColumnKey: 'category',
                 editable: false, // READ-ONLY MODE
-                showToolbar: true,
+                showItemButtons: true,
                 savedClassifications: savedClassifications,
-                showPlantillaMethod: true,
-                canSavePlantillaMethod: false,
-                showGroupMethod: false,
-                crudGroupMethod: false,
+                presetsEnabled: true,
+                presetsEditable: false,
+                groupEnabled: false,
+                groupEditable: false,
                 groups: sampleGroups
             });
 
@@ -331,12 +331,12 @@
                 valueDisplay: 'name',
                 valueColumnKey: 'category',
                 editable: false, // READ-ONLY MODE
-                showToolbar: false, // NO TOOLBAR
+                showItemButtons: false, // NO TOOLBAR
                 savedClassifications: [],
-                showPlantillaMethod: true,
-                canSavePlantillaMethod: false,
-                showGroupMethod: false,
-                crudGroupMethod: false,
+                presetsEnabled: true,
+                presetsEditable: false,
+                groupEnabled: false,
+                groupEditable: false,
                 groups: []
             });
 
@@ -360,12 +360,12 @@
                 valueDisplay: 'name',
                 valueColumnKey: 'category',
                 editable: true,
-                showToolbar: true,
+                showItemButtons: true,
                 savedClassifications: savedClassifications,
-                showPlantillaMethod: false, // BOTH FALSE
-                canSavePlantillaMethod: false,
-                showGroupMethod: false, // BOTH FALSE
-                crudGroupMethod: false,
+                presetsEnabled: false, // BOTH FALSE
+                presetsEditable: false,
+                groupEnabled: false, // BOTH FALSE
+                groupEditable: false,
                 groups: sampleGroups
             });
 
@@ -409,7 +409,7 @@
                 valueDisplay: 'name',
                 valueColumnKey: 'category',
                 editable: true,
-                showToolbar: true
+                showItemButtons: true
             });
 
             try {
@@ -429,7 +429,7 @@
                     valueDisplay: 'name',
                     valueColumnKey: 'category',
                     editable: true,
-                    showToolbar: true,
+                    showItemButtons: true,
                     unassignedDefaultTo: 'category3'
                 });
 

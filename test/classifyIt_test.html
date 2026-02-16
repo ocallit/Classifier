@@ -133,7 +133,7 @@
                 const customOptions = {
                     title: 'Custom Classification',
                     editable: false,
-                    showToolbar: false,
+                    showItemButtons: false,
                     valueId: 'id',
                     valueDisplay: 'name',
                     itemsCategoryIdKey: 'category'
@@ -144,7 +144,7 @@
                 dialogPromise.catch(() => {}); // Suppress rejection
                 assert.equal(classifier.options.title, 'Custom Classification', 'Custom title set');
                 assert.equal(classifier.options.editable, false, 'Custom editable state set');
-                assert.equal(classifier.options.showToolbar, false, 'Custom toolbar setting set');
+                assert.equal(classifier.options.showItemButtons, false, 'Custom toolbar setting set');
             });
 
             QUnit.test('Invalid unassignedDefaultTo falls back to first category', function(assert) {
@@ -170,8 +170,8 @@
             
             QUnit.test('createContent generates proper HTML structure', function(assert) {
                 const classifier = new ClassifyIt(getTestCategories(), getTestItems(), {
-                    showPlantillaMethod: true,
-                    showGroupMethod: true
+                    presetsEnabled: true,
+                    groupEnabled: true
                 });
                 
                 const content = classifier.createContent();
@@ -185,12 +185,12 @@
             QUnit.test('Read-only mode content differences', function(assert) {
                 const editableClassifier = new ClassifyIt(getTestCategories(), getTestItems(), {
                     editable: true,
-                    showToolbar: true
+                    showItemButtons: true
                 });
 
                 const readOnlyClassifier = new ClassifyIt(getTestCategories(), getTestItems(), {
                     editable: false,
-                    showToolbar: true
+                    showItemButtons: true
                 });
 
                 editableClassifier.openDialog();
@@ -296,7 +296,7 @@
             
             QUnit.test('Group items loaded correctly', function(assert) {
                 const classifier = new ClassifyIt(getTestCategories(), getTestItems(), {
-                    showGroupMethod: true,
+                    groupEnabled: true,
                     groups: getTestGroups()
                 });
 
@@ -308,7 +308,7 @@
 
             QUnit.test('applyGroupClassification moves group items to target category', function(assert) {
                 const classifier = new ClassifyIt(getTestCategories(), getTestItems(), {
-                    showGroupMethod: true,
+                    groupEnabled: true,
                     groups: getTestGroups()
                 });
 
@@ -623,15 +623,15 @@
                 assert.ok(values.read.includes('u2'), 'Custom valueId works correctly');
             });
 
-            QUnit.test('showPlantillaMethod and showGroupMethod flags', function(assert) {
+            QUnit.test('presetsEnabled and groupEnabled flags', function(assert) {
                 const classifierBoth = new ClassifyIt(getTestCategories(), getTestItems(), {
-                    showPlantillaMethod: true,
-                    showGroupMethod: true
+                    presetsEnabled: true,
+                    groupEnabled: true
                 });
                 
                 const classifierNeither = new ClassifyIt(getTestCategories(), getTestItems(), {
-                    showPlantillaMethod: false,
-                    showGroupMethod: false
+                    presetsEnabled: false,
+                    groupEnabled: false
                 });
                 
                 const contentBoth = classifierBoth.createContent();
