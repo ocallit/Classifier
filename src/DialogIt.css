@@ -1,0 +1,95 @@
+.dlg_container {
+    padding: 0;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    background: white;
+    font-family: sans-serif;
+
+    /* FIX: Set container to flex column */
+    display: flex;
+    flex-direction: column;
+
+    /* Ensure the dialog has a base size to work with */
+    min-width: 350px;
+    min-height: 200px;
+    width: 450px;
+    height: 300px;
+
+    overflow: hidden;
+    resize: both;
+}
+
+.dlg_container::backdrop {
+    background: transparent;
+}
+
+.dlg_header {
+    /* Header takes only the height it needs */
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background: #f1f1f1;
+    border-bottom: 1px solid #ddd;
+    cursor: move;
+    user-select: none;
+}
+
+.dlg_title {
+    font-weight: bold;
+}
+
+.dlg_close_x {
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.dlg_content {
+    /* FIX: Content area grows to fill all available space */
+    flex: 1 1 auto;
+    padding: 20px;
+    overflow-y: auto;
+    background: white;
+}
+
+.dlg_error_msg {
+    flex: 0 0 auto;
+    color: #d93025;
+    font-size: 0.9rem;
+    padding: 0 20px 10px 20px;
+    display: none;
+}
+
+.dlg_footer {
+    /* Footer stays at the bottom and takes only the height it needs */
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 10px 15px;
+    background: #f9f9f9;
+    border-top: 1px solid #ddd;
+}
+
+.dlg_btn {
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    background: white;
+}
+
+.dlg_btn_primary {
+    background: #007bff;
+    color: white;
+    border-color: #006bde;
+}
+
+.dlg_btn_secondary {
+    background: #f8f9fa;
+}

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DialogIt Example</title>
+    <link rel="stylesheet" href="../src/DialogIt.css">
+    <script src="../src/DialogIt.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 50px; line-height: 1.6; }
+        .controls { display: flex; gap: 10px; flex-wrap: wrap; }
+        pre { background: #f4f4f4; padding: 15px; border-radius: 5px; min-height: 50px; }
+        .field { margin-bottom: 15px; }
+        .field label { display: block; font-weight: bold; margin-bottom: 5px; }
+        .field input { width: 10em; padding: 8px; box-sizing: border-box; }
+    </style>
+
+</head>
+<body>
+
+<h1>DialogIt Example</h1>
+
+<div class="controls">
+    <button onclick="runAlert()">Basic Alert</button>
+    <button onclick="runConfirm()">Basic Confirm</button>
+    <button onclick="runCustomForm()">Complex Form (Validation + Guard)</button>
+</div>
+
+<h3>Last Result:</h3>
+<pre id="output">No action taken yet.</pre>
+
+
+
+<script>
+    const log = (msg) => {
+        document.getElementById('output').textContent = JSON.stringify(msg, null, 2);
+    };
+
+    // 1. Simple Alert
+    async function runAlert() {
+        await DialogIt.alert("This is a simple informational message.", "Notice", "info");
+        log("Alert closed");
+    }
+
+    // 2. Simple Confirm
+    async function runConfirm() {
+        const ok = await DialogIt.confirm("Are you sure you want to delete this item?", "Confirm Action", "warning");
+        log({ confirmed: ok });
+    }
+
+    // 3. Complex Custom Form
+    async function runCustomForm() {
+        // Create a DOM node for the body to keep logic clean
+        const formContainer = document.createElement('div');
+        formContainer.innerHTML = `
+                <div class="field">
+                    <label>Username (try 'admin')</label><br>
+                    <input type="text" name="username" id="test_user" placeholder="Enter username...">
+                </div>
+                <div class="field">
+                    <label>Email</label><br>
+                    <input type="email" name="email" placeholder="user@example.com">
+                </div>
+                <p><small>Changing the username will trigger the 'Unsaved Changes' warning if you try to cancel.</small></p>
+            `;
+
+        // Setup 'Dirty' tracking manually for specific inputs
+        formContainer.querySelector('#test_user').oninput = (e) => {
+            // Find the parent dialog element and set the flag
+            e.target.closest('dialog').isDirty = true;
+        };
+
+        const result = await DialogIt.custom({
+            title: "User Registration",
+            body: formContainer,
+            saveLabel: "Register",
+            cancelLabel: "Discard",
+            warnIfDirty: true,
+            closeOnOutsideClick: false,
+            // ASYNC VALIDATION HOOK
+            validateBeforeSave: async (data, dlg) => {
+                console.log("Validating data:", data);
+
+                // Simulate a network delay
+                await new Promise(r => setTimeout(r, 800));
+
+                if (!data.username) return "Username is required.";
+                if (data.username.toLowerCase() === 'admin') return "The 'admin' username is already taken.";
+                if (!data.email.includes('@')) return "Please enter a valid email address.";
+
+                return ""; // Empty string means validation passed
+            },
+            onOpen: (dlg) => console.log("Dialog is now visible in DOM"),
+            onClose: (dlg) => console.log("Dialog is being cleaned up and removed")
+        });
+
+        if (result) {
+            log(result);
+        } else {
+            log("Action canceled by user (or ESC/Outside Click)", result);
+        }
+    }
+</script>
+</body>
+</html>
