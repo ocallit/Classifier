@@ -86,12 +86,12 @@ classifier.openDialog()
 ## Core Concepts
 
 ### Item Classification
-Items are categorized based on a specific property key, which defaults to `category` but is configurable via the `itemsCategoryIdKey` option. The widget maps each item's unique identifier, defined by `valueId`, to a specific category column in the user interface.
+Items are categorized based on a specific property key, which defaults to `category` but is configurable via the ` itemCategoryKey` option. The widget maps each item's unique identifier, defined by `itemIdKey`, to a specific category column in the user interface.
 
 ### Data Integrity and Fallbacks
 To ensure data consistency, the widget includes logic to handle items with missing or invalid category assignments.
 * **Default Assignment**: If an item has an unrecognized or null category, it is automatically moved to a default category during initialization.
-* **Configurable Defaults**: Users can specify this fallback category using the `unassignedDefaultTo` option; otherwise, it defaults to the first category in the provided array.
+* **Configurable Defaults**: Users can specify this fallback category using the `fallbackClassificationId` option; otherwise, it defaults to the first category in the provided array.
 
 ### Classification Templates (Plantillas)
 The "Plantilla" method allows for saving and applying entire classification states.
@@ -116,20 +116,20 @@ The `ClassifyIt` constructor accepts an optional `options` object to customize t
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `title` | String | `'Classification'` | The title displayed in the dialog header. |
-| `que_clasifica_label` | String | `'Items'` | Label used for the items in counters and search placeholders. |
-| `valueId` | String | `'id'` | The property name in the items array used as a unique identifier. |
-| `valueDisplay` | String | `'name'` | The property name in the items array used for display labels. |
-| `itemsCategoryIdKey` | String | `'category'` | The property name in the items array that stores the category ID. |
+| `itemNamePlural` | String | `'Items'` | Label used for the items in counters and search placeholders. |
+| `itemIdKey` | String | `'id'` | The property name in the items array used as a unique identifier. |
+| `itemlabelKey` | String | `'name'` | The property name in the items array used for display labels. |
+| ` itemCategoryKey` | String | `'category'` | The property name in the items array that stores the category ID. |
 | `editable` | Boolean | `true` | When `false`, disables drag-and-drop, hides toolbars, and sets the interface to read-only. |
 | `showItemButtons` | Boolean | `true` | Determines whether the quick-action category buttons are visible on each item. |
-| `unassignedDefaultTo` | String | `null` | Category ID where items with invalid or missing categories are placed. |
+| `fallbackClassificationId` | String | `null` | Category ID where items with invalid or missing categories are placed. |
 | `presetsEnabled` | Boolean | `true` | Enables the template management interface (Plantillas). |
 | `presetsEditable` | Boolean | `false` | Allows users to save current classifications as new templates. |
 | `groupEnabled` | Boolean | `false` | Enables the group-based classification interface. |
 | `groupEditable` | Boolean | `false` | Enables the "Manage Groups" button for recursive composite group creation. |
-| `savedClassifications` | Array | `[]` | Initial list of predefined classification templates. |
+| `presetValues` | Array | `[]` | Initial list of predefined classification templates. |
 | `groups` | Array | `[]` | Initial list of available groups for batch classification. |
-| `apiEndpoints` | Object | `{...}` | Configuration for API URLs used for saving, loading, and group management. |
+| `apiUrl`               | String      | See below | API endpoint |
 
 ## 🧪 Testing
 

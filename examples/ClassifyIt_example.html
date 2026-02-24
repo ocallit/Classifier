@@ -96,7 +96,7 @@
             <p>Test scenarios for validation and edge case handling.</p>
             <button class="demo-btn" onclick="openNeither()">Neither Method (Fallback to Individual)</button>
             <button class="demo-btn readonly" onclick="openReadOnlyNoToolbar()">Read-Only without Toolbar</button>
-            <button class="demo-btn" onclick="testUnassignedDefaultTo()">Test unassignedDefaultTo Option</button>
+            <button class="demo-btn" onclick="testUnassignedDefaultTo()">Test fallbackClassificationId Option</button>
         </div>
     </div>
 
@@ -123,7 +123,7 @@
             {id: "invalid", name: "invalid cat", category:"OTRO TEMA"},
         ];
 
-        const savedClassifications = [
+        const presetValues = [
             {
                 id: "1",
                 name: "Admins Only",
@@ -171,12 +171,12 @@
         async function openIndividualOnly() {
             const userCategories = new ClassifyIt(permissions, users, {
                 title: 'User Permission Classification',
-                valueId: 'id',
-                valueDisplay: 'name',
+                itemIdKey: 'id',
+                itemlabelKey: 'name',
                 valueColumnKey: 'category',
                 editable: true,
                 showItemButtons: true,
-                savedClassifications: savedClassifications,
+                presetValues: presetValues,
                 presetsEnabled: true,
                 presetsEditable: false,
                 groupEnabled: false,
@@ -200,12 +200,12 @@
         async function openGroupOnly() {
             const userCategories = new ClassifyIt(permissions, users, {
                 title: 'User Permission Classification',
-                valueId: 'id',
-                valueDisplay: 'name',
+                itemIdKey: 'id',
+                itemlabelKey: 'name',
                 valueColumnKey: 'category',
                 editable: true,
                 showItemButtons: true,
-                savedClassifications: savedClassifications,
+                presetValues: presetValues,
                 presetsEnabled: false,
                 presetsEditable: false,
                 groupEnabled: true,
@@ -229,12 +229,12 @@
         async function openIndividualWithEdit() {
             const userCategories = new ClassifyIt(permissions, users, {
                 title: 'User Permission Classification',
-                valueId: 'id',
-                valueDisplay: 'name',
+                itemIdKey: 'id',
+                itemlabelKey: 'name',
                 valueColumnKey: 'category',
                 editable: true,
                 showItemButtons: true,
-                savedClassifications: savedClassifications,
+                presetValues: presetValues,
                 presetsEnabled: true,
                 presetsEditable: true,
                 groupEnabled: false,
@@ -259,12 +259,12 @@
         async function openReadOnlyMode() {
             const userCategories = new ClassifyIt(permissions, users, {
                 title: 'User Permission Classification',
-                valueId: 'id',
-                valueDisplay: 'name',
+                itemIdKey: 'id',
+                itemlabelKey: 'name',
                 valueColumnKey: 'category',
                 editable: false, // READ-ONLY MODE
                 showItemButtons: true,
-                savedClassifications: savedClassifications,
+                presetValues: presetValues,
                 presetsEnabled: true,
                 presetsEditable: false,
                 groupEnabled: false,
@@ -299,12 +299,12 @@
 
             const userCategories = new ClassifyIt(permissions, preclassifiedUsers, {
                 title: 'User Permission Classification',
-                valueId: 'id',
-                valueDisplay: 'name',
+                itemIdKey: 'id',
+                itemlabelKey: 'name',
                 valueColumnKey: 'category',
                 editable: false, // READ-ONLY MODE
                 showItemButtons: true,
-                savedClassifications: savedClassifications,
+                presetValues: presetValues,
                 presetsEnabled: true,
                 presetsEditable: false,
                 groupEnabled: false,
@@ -327,12 +327,12 @@
         async function openReadOnlyNoToolbar() {
             const userCategories = new ClassifyIt(permissions, users, {
                 title: 'User Permission Classification',
-                valueId: 'id',
-                valueDisplay: 'name',
+                itemIdKey: 'id',
+                itemlabelKey: 'name',
                 valueColumnKey: 'category',
                 editable: false, // READ-ONLY MODE
                 showItemButtons: false, // NO TOOLBAR
-                savedClassifications: [],
+                presetValues: [],
                 presetsEnabled: true,
                 presetsEditable: false,
                 groupEnabled: false,
@@ -356,12 +356,12 @@
         async function openNeither() {
             const userCategories = new ClassifyIt(permissions, users, {
                 title: 'User Permission Classification',
-                valueId: 'id',
-                valueDisplay: 'name',
+                itemIdKey: 'id',
+                itemlabelKey: 'name',
                 valueColumnKey: 'category',
                 editable: true,
                 showItemButtons: true,
-                savedClassifications: savedClassifications,
+                presetValues: presetValues,
                 presetsEnabled: false, // BOTH FALSE
                 presetsEditable: false,
                 groupEnabled: false, // BOTH FALSE
@@ -382,7 +382,7 @@
             }
         }
 
-        // TEST FOR unassignedDefaultTo OPTION
+        // TEST FOR fallbackClassificationId OPTION
         async function testUnassignedDefaultTo() {
             // Define categories
             const testCategories = [
@@ -401,12 +401,12 @@
                 {id: 6, name: "Item with empty string category", category: ""}
             ];
 
-            // First test: Without unassignedDefaultTo (should default to first category)
-            console.log("TEST 1: Without unassignedDefaultTo option");
+            // First test: Without fallbackClassificationId (should default to first category)
+            console.log("TEST 1: Without fallbackClassificationId option");
             const classifier1 = new ClassifyIt(testCategories, testItems, {
-                title: 'Test Without unassignedDefaultTo',
-                valueId: 'id',
-                valueDisplay: 'name',
+                title: 'Test Without fallbackClassificationId',
+                itemIdKey: 'id',
+                itemlabelKey: 'name',
                 valueColumnKey: 'category',
                 editable: true,
                 showItemButtons: true
@@ -414,32 +414,32 @@
 
             try {
                 const result1 = await classifier1.openDialog({
-                    title: 'Test Without unassignedDefaultTo'
+                    title: 'Test Without fallbackClassificationId'
                 });
 
                 console.log('Classification saved successfully!');
-                console.log('Results (without unassignedDefaultTo):', result1);
+                console.log('Results (without fallbackClassificationId):', result1);
                 console.log('Items with invalid categories should be in category1');
 
-                // Second test: With unassignedDefaultTo set to category3
-                console.log("\nTEST 2: With unassignedDefaultTo set to category3");
+                // Second test: With fallbackClassificationId set to category3
+                console.log("\nTEST 2: With fallbackClassificationId set to category3");
                 const classifier2 = new ClassifyIt(testCategories, testItems, {
-                    title: 'Test With unassignedDefaultTo',
-                    valueId: 'id',
-                    valueDisplay: 'name',
+                    title: 'Test With fallbackClassificationId',
+                    itemIdKey: 'id',
+                    itemlabelKey: 'name',
                     valueColumnKey: 'category',
                     editable: true,
                     showItemButtons: true,
-                    unassignedDefaultTo: 'category3'
+                    fallbackClassificationId: 'category3'
                 });
 
                 try {
                     const result2 = await classifier2.openDialog({
-                        title: 'Test With unassignedDefaultTo = category3'
+                        title: 'Test With fallbackClassificationId = category3'
                     });
 
                     console.log('Classification saved successfully!');
-                    console.log('Results (with unassignedDefaultTo):', result2);
+                    console.log('Results (with fallbackClassificationId):', result2);
                     console.log('Items with invalid categories should be in category3');
 
                 } catch (error) {

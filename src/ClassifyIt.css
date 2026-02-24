@@ -894,3 +894,9 @@ dialog.oc-dialog::backdrop {
     background-color: #c82333;
     color: white;
 }
+
+.oc-item.is-group-member {
+    /* Draws inside the box; does not change parent size */
+    outline: 2px solid #3498db !important;
+    outline-offset: -2px;
+}

@@ -209,8 +209,8 @@
 
                             switch(action) {
                                 case 'tagGetItemTags': {
-                                    const itemId = params.get('item_id');
-                                    const selectedIds = mockItemTags[itemId] || [];
+                                    const itemIdKey = params.get('item_id');
+                                    const selectedIds = mockItemTags[itemIdKey] || [];
                                     const tags = mockTags.map(t => ({
                                         value: t.id,
                                         text: t.text,
@@ -299,7 +299,7 @@
 
             const classifier = new ClassifyIt(categories, items, {
                 title: 'Productos — ' + tagText,
-                que_clasifica_label: 'Productos',
+                itemNamePlural: 'Productos',
                 editable: !readOnly,
                 showItemButtons: !readOnly,
                 presetsEnabled: true,

@@ -36,47 +36,34 @@ new ClassifyIt(categories, items, options = {})
 
 ```javascript
 {
-    id: 'unique_id',           // Unique identifier (valueId option)
-    name: 'Display Name',     // Display name (valueDisplay option)
-    category: 'category_id'   // Current category (itemsCategoryIdKey option)
+    id: 'unique_id',           // Unique identifier (itemIdKey option)
+    name: 'Display Name',     // Display name (itemlabelKey option)
+    category: 'category_id'   // Current category ( itemCategoryKey option)
 }
 ```
 
 ## Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `title` | String | `'Classification'` | Dialog title |
-| `que_clasifica` | String | `'producto'` | Type of items being classified (for API/database) |
-| `que_clasifica_label` | String | `'Items'` | Label for items in UI |
-| `valueId` | String | `'id'` | Property name for item unique identifier |
-| `valueDisplay` | String | `'name'` | Property name for item display text |
-| `itemsCategoryIdKey` | String | `'category'` | Property name for item's current category |
-| `editable` | Boolean | `true` | Whether classification can be modified |
-| `showItemButtons` | Boolean | `true` | Show individual item action buttons |
-| `savedClassifications` | Array | `[]` | Array of saved classification templates |
-| `presetsEnabled` | Boolean | `true` | Enable template/individual classification mode |
-| `presetsEditable` | Boolean | `false` | Allow saving new templates |
-| `groupEnabled` | Boolean | `false` | Enable group-based classification mode |
-| `groupEditable` | Boolean | `false` | Allow creating/editing groups |
-| `groups` | Array | `[]` | Array of available groups |
-| `apiEndpoints` | Object | See below | API endpoint configurations |
-| `debug` | Boolean | `false` | Enable debug logging |
-| `unassignedDefaultTo` | String/null | `null` | Default category for items with invalid categories |
+| Option                 | Type        | Default | Description |
+|------------------------|-------------|---------|-------------|
+| `title`                | String      | `'Classification'` | Dialog title |
+| `itemNameSingular`        | String      | `'producto'` | Type of items being classified (for API/database) |
+| `itemNamePlural`  | String      | `'Items'` | Label for items in UI |
+| `itemIdKey`              | String      | `'id'` | Property name for item unique identifier |
+| `itemlabelKey`         | String      | `'name'` | Property name for item display text |
+| ` itemCategoryKey`   | String      | `'category'` | Property name for item's current category |
+| `editable`             | Boolean     | `true` | Whether classification can be modified |
+| `showItemButtons`      | Boolean     | `true` | Show individual item action buttons |
+| `presetValues` | Array       | `[]` | Array of saved classification templates |
+| `presetsEnabled`       | Boolean     | `true` | Enable template/individual classification mode |
+| `presetsEditable`      | Boolean     | `false` | Allow saving new templates |
+| `groupEnabled`         | Boolean     | `false` | Enable group-based classification mode |
+| `groupEditable`        | Boolean     | `false` | Allow creating/editing groups |
+| `groups`               | Array       | `[]` | Array of available groups |
+| `apiUrl`               | String      | See below | API endpoint |
+| `debug`                | Boolean     | `false` | Enable debug logging |
+| `fallbackClassificationId`  | String/null | `null` | Default category for items with invalid categories |
 
-### API Endpoints Object
-
-```javascript
-// DEFAULT configuration (Override these with project-specific routes)
-apiEndpoints: {
-    save: '',
-    load: '',
-    getGroups: '',
-    getGroupItems: '',
-    saveGroup: '',
-    deleteGroup: ''
-}
-```
 
 ### Saved Classification Object Structure
 
@@ -247,7 +234,7 @@ const savedTemplates = [
 const clasificame = new ClassifyIt(categories, users, {
     title: 'User Permissions',
     editable: true,
-    savedClassifications: savedTemplates,
+    presetValues: savedTemplates,
     presetsEnabled: true,
     presetsEditable: true
 });
@@ -275,7 +262,7 @@ const clasificame = new ClassifyIt(categories, users, {
 ```javascript
 const clasificame = new ClassifyIt(categories, users, {
     title: 'User Permissions',
-    unassignedDefaultTo: 'read', // Items with invalid categories go to 'read'
+    fallbackClassificationId: 'read', // Items with invalid categories go to 'read'
     editable: true
 });
 ```
@@ -346,7 +333,7 @@ The widget uses CSS classes prefixed with `oc-`. Key classes:
 
 ## ClassifyIt Widget Best Practices
 
-1. **Set appropriate default category** using `unassignedDefaultTo` for data integrity
+1. **Set appropriate default category** using `fallbackClassificationId` for data integrity
 2. **Use read-only mode** for display-only scenarios to prevent accidental changes
 
 

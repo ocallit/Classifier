@@ -134,9 +134,9 @@
                     title: 'Custom Classification',
                     editable: false,
                     showItemButtons: false,
-                    valueId: 'id',
-                    valueDisplay: 'name',
-                    itemsCategoryIdKey: 'category'
+                    itemIdKey: 'id',
+                    itemlabelKey: 'name',
+                     itemCategoryKey: 'category'
                 };
 
                 const classifier = new ClassifyIt(getTestCategories(), getTestItems(), customOptions);
@@ -147,12 +147,12 @@
                 assert.equal(classifier.options.showItemButtons, false, 'Custom toolbar setting set');
             });
 
-            QUnit.test('Invalid unassignedDefaultTo falls back to first category', function(assert) {
+            QUnit.test('Invalid fallbackClassificationId falls back to first category', function(assert) {
                 const classifier = new ClassifyIt(getTestCategories(), getTestItems(), {
-                    valueId: 'id',
-                    valueDisplay: 'name',
-                    itemsCategoryIdKey: 'category',
-                    unassignedDefaultTo: 'nonexistent'
+                    itemIdKey: 'id',
+                    itemlabelKey: 'name',
+                     itemCategoryKey: 'category',
+                    fallbackClassificationId: 'nonexistent'
                 });
                 const dialogPromise = classifier.openDialog();
                 dialogPromise.catch(() => {}); // Suppress rejection
@@ -168,13 +168,13 @@
         // Content Generation Tests
         QUnit.module('Content Generation', function() {
             
-            QUnit.test('createContent generates proper HTML structure', function(assert) {
+            QUnit.test('_createContent generates proper HTML structure', function(assert) {
                 const classifier = new ClassifyIt(getTestCategories(), getTestItems(), {
                     presetsEnabled: true,
                     groupEnabled: true
                 });
                 
-                const content = classifier.createContent();
+                const content = classifier._createContent();
                 
                 assert.ok(content.includes('oc-clasificame'), 'Main container class present');
                 assert.ok(content.includes('oc-search-input'), 'Search input present');
@@ -381,7 +381,7 @@
             
             QUnit.test('applyClassification applies saved classification correctly', function(assert) {
                 const classifier = new ClassifyIt(getTestCategories(), getTestItems(), {
-                    savedClassifications: getSavedClassifications()
+                    presetValues: getSavedClassifications()
                 });
 
                 const dialogPromise = classifier.openDialog();
@@ -421,7 +421,7 @@
 
             QUnit.test('applyClassification with non-existent classification', function(assert) {
                 const classifier = new ClassifyIt(getTestCategories(), getTestItems(), {
-                    savedClassifications: getSavedClassifications()
+                    presetValues: getSavedClassifications()
                 });
 
                 const dialogPromise = classifier.openDialog();
@@ -430,7 +430,7 @@
                 // Get initial DOM state
                 const initialItems = classifier.dialogElement.querySelectorAll('.oc-item');
                 const initialPositions = Array.from(initialItems).map(item => ({
-                    id: item.dataset.itemId,
+                    id: item.dataset.itemIdKey,
                     category: item.dataset.category,
                     parent: item.parentElement.dataset.category
                 }));
@@ -441,7 +441,7 @@
                 // Check that items remain in original positions
                 const finalItems = classifier.dialogElement.querySelectorAll('.oc-item');
                 const finalPositions = Array.from(finalItems).map(item => ({
-                    id: item.dataset.itemId,
+                    id: item.dataset.itemIdKey,
                     category: item.dataset.category,
                     parent: item.parentElement.dataset.category
                 }));
@@ -605,22 +605,22 @@
         // Configuration Tests
         QUnit.module('Configuration Options', function() {
             
-            QUnit.test('Different valueId and valueDisplay options', function(assert) {
+            QUnit.test('Different itemIdKey and itemlabelKey options', function(assert) {
                 const customItems = [
                     {userId: 'u1', fullName: "User One", permission: "none"},
                     {userId: 'u2', fullName: "User Two", permission: "read"}
                 ];
                 
                 const classifier = new ClassifyIt(getTestCategories(), customItems, {
-                    valueId: 'userId',
-                    valueDisplay: 'fullName',
-                    itemsCategoryIdKey: 'permission'
+                    itemIdKey: 'userId',
+                    itemlabelKey: 'fullName',
+                     itemCategoryKey: 'permission'
                 });
                 const dialogPromise = classifier.openDialog();
                 dialogPromise.catch(() => {}); // Suppress rejection
                 const values = classifier.getValue();
-                assert.ok(values.none.includes('u1'), 'Custom valueId works correctly');
-                assert.ok(values.read.includes('u2'), 'Custom valueId works correctly');
+                assert.ok(values.none.includes('u1'), 'Custom itemIdKey works correctly');
+                assert.ok(values.read.includes('u2'), 'Custom itemIdKey works correctly');
             });
 
             QUnit.test('presetsEnabled and groupEnabled flags', function(assert) {
@@ -634,8 +634,8 @@
                     groupEnabled: false
                 });
                 
-                const contentBoth = classifierBoth.createContent();
-                const contentNeither = classifierNeither.createContent();
+                const contentBoth = classifierBoth._createContent();
+                const contentNeither = classifierNeither._createContent();
                 
                 assert.ok(contentBoth.includes('oc-classification-manager'), 'Both modes show classification manager');
                 assert.notOk(contentNeither.includes('oc-classification-manager'), 'Neither mode hides classification manager');

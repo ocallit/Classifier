@@ -25,7 +25,7 @@ class TagIt {
             dialogTitle: 'Editar Categorias',
             confirmDelete: true,
             readOnly: false,
-            itemId: null,
+            itemIdKey: null,
             itemTable: null,
             classifier: false,
             onClassify: null,
@@ -40,7 +40,7 @@ class TagIt {
             this.options.readOnly = true;
         }
         if(this.selectElement.dataset.tagitItemid) {
-            this.options.itemId = this.selectElement.dataset.tagitItemid;
+            this.options.itemIdKey = this.selectElement.dataset.tagitItemid;
         }
         if(this.selectElement.dataset.tagitTable) {
             this.options.itemTable = this.selectElement.dataset.tagitTable;
@@ -81,9 +81,9 @@ class TagIt {
         // Create dialog
         this.buildDialogContent();
 
-        // Auto-fetch if itemId present and select has no options
+        // Auto-fetch if itemIdKey present and select has no options
         const hasOptions = this.selectElement.querySelectorAll('option').length > 0;
-        if(this.options.itemId && !hasOptions) {
+        if(this.options.itemIdKey && !hasOptions) {
             this.fetchItemTags();
         }
     }
@@ -336,11 +336,11 @@ class TagIt {
     /**
      * Fetch tags for the current item from the backend.
      * Populates the select and TomSelect with the returned tags.
-     * Can be called explicitly or auto-called on init when itemId is set
+     * Can be called explicitly or auto-called on init when itemIdKey is set
      * and the <select> has no options.
      */
     async fetchItemTags() {
-        if(!this.options.itemId) {
+        if(!this.options.itemIdKey) {
             return;
         }
 
@@ -348,7 +348,7 @@ class TagIt {
             const response = await this._apiPost({
                 action: 'tagGetItemTags',
                 catalog_id: this.options.catalogId,
-                item_id: this.options.itemId,
+                item_id: this.options.itemIdKey,
                 item_table: this.options.itemTable || ''
             });
             if(response.success && response.data && response.data.tags) {
@@ -1150,7 +1150,7 @@ document.addEventListener('DOMContentLoaded', function() {
             options.catalogId = element.dataset.tagitCatalogid;
         }
         if(element.dataset.tagitItemid) {
-            options.itemId = element.dataset.tagitItemid;
+            options.itemIdKey = element.dataset.tagitItemid;
         }
         if(element.dataset.tagitTable) {
             options.itemTable = element.dataset.tagitTable;

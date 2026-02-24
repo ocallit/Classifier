@@ -3,44 +3,49 @@
  * @description Main logic for classification module.
  * @requires DialogIt for draggable dialog support
  * @see {@link ../docs/ClassifyIt_docs.md} - ClassifyIt API, options, events
+ *
+ * IN:
+ * const classifications = [ { id: 'cat_yes', label: 'Si' }, { id: 'cat_no', label: 'No' } ];
+ * const items = [
+ *     { id: 101, name: 'Item Alpha', classification: 'cat_yes' },
+ *     { id: 102, name: 'Item Beta', classification: 'cat_no' },
+ *     { id: 103, name: 'Item With wrong classification', classification: 'cat_maybe' },
+ *     { id: 104, name: 'Item Without classification' },
+ * ];
+ * fallbackClassificationId
+ * OUT:
+ * a) Clcking save: { "cat_yes": [101, 104], "cat_no": [102, 103], }
+ * b) Clicking cancel: false
+ *
  */
 class ClassifyIt {
 
-    /** Sets up the internal state, merges configuration options, and identifies the default category for unassigned items. */
-    constructor(categories, items, options = {}) {
-        this.categories = categories;
+    /** Sets up the internal state, merges configuration options, and identifies the default classification for unassigned items. */
+    constructor(classifications, items, fallbackClassificationId, options = {}) {
+        this.classifications = classifications;
         this.items = items;
+        this.fallbackClassificationId = fallbackClassificationId;
+        this.fallbackClassificationId = this._getDefaultClassificationId();
         this.options = {
+            apiUrl: './api/classifier_mock.php',
             title: 'Classification',
-            que_clasifica: 'producto',
-            que_clasifica_label: 'Items',
+            itemTableName: 'producto',
+            itemNameSingular: 'producto',
+            itemNamePlural: 'Items',
 
-            valueId: 'id',
-            valueDisplay: 'name',
-            itemsCategoryIdKey: 'category',
+            itemIdKey: 'id',
+            itemlabelKey: 'name',
+            itemClassificationKey: 'classification',
 
+            autoPersist: false,
             editable: true,
             showItemButtons: true,
-
-            savedClassifications: [],
 
             groupEnabled: false,
             groupEditable: false,
             groups: [],
-
-            presetsEnabled: true,
-            presetsEditable: false,
-
-            apiEndpoints: {
-                save: '/api/classifications/save', // For main classifications
-                load: '/api/classifications/list',
-                getGroups: '/api/groups/list', // To fetch initial groups list
-                getGroupItems: '/api/groups/:groupId/items', // To fetch items for a specific group
-                saveGroup: '/api/groups/save', // CRUD: Save a group
-                deleteGroup: '/api/groups/delete' // CRUD: Delete a group
-            },
-            debug:false,
-            unassignedDefaultTo: null, // Default category ID for items with invalid categories
+            
+            debug: false,
             ...options
         };
 
@@ -50,68 +55,12 @@ class ClassifyIt {
         this.isOpen = false;
         this.selectedGroupItems = [];
 
-        this.options.unassignedDefaultTo = this._getDefaultCategoryId();
+        // Derived Write-Only state for AI Context
+        this.intentOnSave = this.options.autoPersist ? 'PERSIST' : 'RETURN';
 
         this._initializeValues();
 
         this.isClosingProgrammatically = false; // Flag for native dialog closeDialog handling
-    }
-
-
-    /** Assembles the complete inner HTML of the widget, combining the manager areas, search bar, and item columns. */
-    createContent() {
-
-        let classificationManagerHTML = "<div>";
-        if(this.options.presetsEnabled)
-            classificationManagerHTML += this._createClassificationManagerHTML();
-        if(this.options.groupEnabled)
-            classificationManagerHTML += this._createGroupManagerHTML();
-        classificationManagerHTML += "</div>";
-
-        const searchHTML = `
-            <div class="oc-search-stats-row">
-                <div class="oc-global-search">
-                    <input type="text" class="oc-search-input" placeholder="🔎 Busca ${this.options.que_clasifica_label}">
-                    <button class="oc-search-clear">×</button>
-                </div>
-                <div class="oc-stats">
-                    Total: <span id="total-count">${this.items.length}</span> ${this.options.que_clasifica_label}
-                </div>
-            </div>
-        `;
-        const columnsHTML = this._dragDropColumns();
-
-        return `
-            <div class="oc-clasificame">
-                ${classificationManagerHTML}
-                ${searchHTML}
-                <div class="oc-columns">
-                    ${columnsHTML}
-                </div>
-            </div>
-        `;
-    }
-
-    /** Scans the current DOM structure to build a map of which item IDs are physically located in which category columns. */
-    getValue() {
-        const result = {};
-        this.categories.forEach(category => {
-            result[category.id] = [];
-        });
-
-        const defaultCategoryId = this._getDefaultCategoryId();
-        const items = this.dialogElement.querySelectorAll('.oc-item');
-        items.forEach(item => {
-            const itemId = item.dataset.itemId;
-            const category = item.dataset.category; // This reflects current UI state
-            if(result.hasOwnProperty(category)) {
-                result[category].push(itemId);
-            } else {
-                result[defaultCategoryId].push(itemId);
-                console.warn(`Item ${itemId} found in DOM with unrecognized category '${category}'`);
-            }
-        });
-        return result;
     }
 
     /** Displays the modal, initializes drag-and-drop libraries, attaches event listeners, and returns a promise that resolves upon saving */
@@ -149,7 +98,16 @@ class ClassifyIt {
         });
     }
 
-    /** Triggers the promise resolution or rejection, destroys active library instances, and cleans up the DOM elements..*/
+    /**
+     * Triggers the promise resolution or rejection, destroys active library instances, and cleans up the DOM elements.
+     *
+     * AI NOTE: DIALOG LIFECYCLE & DATA RETURN.
+     * This is the gateway for data exit. It does NOT persist changes.
+     * - If 'save' is true: It triggers getValue() and resolves the instance promise with the data.
+     * - If 'save' is false: It rejects the promise (User Cancelled).
+     * The responsibility for DB persistence (e.g., updating classifier_assignments)
+     * lies entirely with the .then() block of the caller that opened the dialog.
+     */
     closeDialog(save = false) {
         this.isClosingProgrammatically = true; // Set flag
 
@@ -191,53 +149,82 @@ class ClassifyIt {
         this._updateCounters();
     }
 
-    // Helper method to get the default category ID
-    _getDefaultCategoryId() {
-        if(this.options.unassignedDefaultTo === null) {
-            return this.categories[0].id;
+    /**
+     * Scans the current DOM structure to build a map of which item IDs are physically located in which classification columns.
+     * AI NOTE: NON-PERSISTENT UI SCANNER.
+     * This method performs a live DOM-scrape of the current column structure.
+     * It does NOT hit an API or save to a database. It simply translates the physical
+     * position of item elements into a JSON map of { classificationId: [itemIds] }.
+     * Use this to retrieve the "final draft" of a classification session.
+     */
+    getValue() {
+        const result = {};
+        this.classifications.forEach(classification => {
+            result[classification.id] = [];
+        });
+
+        const defaultClassificationId = this._getDefaultClassificationId();
+        const items = this.dialogElement.querySelectorAll('.oc-item');
+        items.forEach(item => {
+            const itemIdKey = item.dataset.itemIdKey;
+            const classification = item.dataset.classification; // This reflects current UI state
+            if(result.hasOwnProperty(classification)) {
+                result[classification].push(itemIdKey);
+            } else {
+                result[defaultClassificationId].push(itemIdKey);
+                console.warn(`Item ${itemIdKey} found in DOM with unrecognized classification '${classification}'`);
+            }
+        });
+        return result;
+    }
+
+    // Helper method to get the default classification ID
+    _getDefaultClassificationId() {
+        if(this.fallbackClassificationId === null) {
+            return this.classifications[0].id;
         }
-        for(let cat of this.categories)
-            if(cat.id == this.options.unassignedDefaultTo)
-                return this.options.unassignedDefaultTo;
-        return this.categories[0].id;
+        for(let cat of this.classifications)
+            if(cat.id == this.fallbackClassificationId)
+                return this.fallbackClassificationId;
+        return this.classifications[0].id;
     }
 
     _initializeValues() {
-        this.categories.forEach(cat => {
+        this.classifications.forEach(cat => {
             this.currentValues[cat.id] = [];
         });
 
-        // Ensure categories array is not empty before trying to access its first element
-        if(this.categories.length === 0) {
-            console.error("ClassifyIt: No categories defined. Cannot initialize values.");
-            return; // Cannot proceed without categories
+        // Ensure classifications array is not empty before trying to access its first element
+        if(this.classifications.length === 0) {
+            console.error("ClassifyIt: No classifications defined. Cannot initialize values.");
+            return; // Cannot proceed without classifications
         }
 
-        // Get the default category ID
-        const defaultCategoryId = this._getDefaultCategoryId();
+        // Get the default classification ID
+        const defaultClassificationId = this._getDefaultClassificationId();
 
         this.items.forEach(item => {
-            let assignedCategoryId = item[this.options.itemsCategoryIdKey];
+            let assignedClassificationId = item[this.options.itemClassificationKey];
 
-            // Check if the item's category is missing, null, undefined, 
-            // or not a valid initialized category ID.
-            if(!assignedCategoryId || !this.currentValues.hasOwnProperty(assignedCategoryId)) {
-                item[this.options.itemsCategoryIdKey] = defaultCategoryId; // Update the item's actual category property
-                assignedCategoryId = defaultCategoryId; // Use the default category for pushing
+            // Check if the item's classification is missing, null, undefined, 
+            // or not a valid initialized classification ID.
+            if(!assignedClassificationId || !this.currentValues.hasOwnProperty(assignedClassificationId)) {
+                item[this.options.itemClassificationKey] = defaultClassificationId; // Update the item's actual classification property
+                assignedClassificationId = defaultClassificationId; // Use the default classification for pushing
             }
 
-            // At this point, assignedCategoryId should be a valid key in this.currentValues.
+            // At this point, assignedClassificationId should be a valid key in this.currentValues.
             // The direct push is generally safe, but a hasOwnProperty check is more robust.
-            if(this.currentValues.hasOwnProperty(assignedCategoryId)) {
-                this.currentValues[assignedCategoryId].push(item[this.options.valueId]);
+            if(this.currentValues.hasOwnProperty(assignedClassificationId)) {
+                this.currentValues[assignedClassificationId].push(item[this.options.itemIdKey]);
             } else {
-                // This fallback should theoretically not be reached if categories are defined
-                // and defaultCategoryId is derived from them.
-                // It implies an issue with defaultCategoryId or the initialization of currentValues.
-                console.warn(`Item ${item[this.options.valueId]} could not be assigned to category '${assignedCategoryId}' or default '${defaultCategoryId}'. This may indicate an issue with category definitions.`);
-                // As a last resort, if even defaultCategoryId is problematic, this item might not be added,
-                // or you might consider a "limbo" category if that makes sense for the application.
-                // For now, we'll log the warning. If defaultCategoryId is always valid, this else is defensive.
+                // This fallback should theoretically not be reached if classifications are defined
+                // and defaultClassificationId is derived from them.
+                // It implies an issue with defaultClassificationId or the initialization of currentValues.
+                console.warn(`Item ${item[this.options.itemIdKey]} could not be assigned to classification '${assignedClassificationId}' or default '${defaultClassificationId}'. This may indicate an issue with classification definitions.`);
+                // As a last resort, if even defaultClassificationId is problematic, this item might not be added,
+                // or you might consider a "limbo" classification if that makes sense for the application.
+                // For now, we'll log the warning. If defaultClassificationId is always valid, this else is defensive.
             }
         });
     }
@@ -250,10 +237,10 @@ class ClassifyIt {
             height: '85vh'
         };
 
-        const opts = { ...defaultOptions, ...dialogOptions };
+        const opts = {...defaultOptions, ...dialogOptions};
 
         // Modify footer buttons based on editable state
-        const footerButtonsHTML = this.options.editable 
+        const footerButtonsHTML = this.options.editable
             ? `<button class="oc-btn oc-btn-secondary" data-action="cancel">Cancel</button>
                <button class="oc-btn oc-btn-primary" data-action="save">Guardar</button>`
             : `<button class="oc-btn oc-btn-primary" data-action="close">Cerrar</button>`;
@@ -274,7 +261,7 @@ class ClassifyIt {
                     <button class="oc-dialog-close" type="button">×</button>
                 </div>
                 <div class="oc-dialog-body">
-                    ${this.createContent()}
+                    ${this._createContent()}
                 </div>
                 <div class="oc-dialog-footer">
                     ${footerButtonsHTML}
@@ -288,31 +275,31 @@ class ClassifyIt {
         this.dialogElement.addEventListener('pointerdown', (e) => DialogIt.dragStart(e, this.dialogElement));
     }
 
-    /** Iterates through category data to build the individual column containers and their navigation footers. */
+    /** Iterates through classification data to build the individual column containers and their navigation footers. */
     _dragDropColumns() {
-        return this.categories.map((category, index) => {
+        return this.classifications.map((classification, index) => {
             const isFirst = index === 0;
-            const isLast = index === this.categories.length - 1;
-            const leftCategory = isFirst ? null : this.categories[index - 1];
-            const rightCategory = isLast ? null : this.categories[index + 1];
+            const isLast = index === this.classifications.length - 1;
+            const leftClassification = isFirst ? null : this.classifications[index - 1];
+            const rightClassification = isLast ? null : this.classifications[index + 1];
 
             // Hide navigation buttons if not editable
             const navigationHTML = this.options.editable ? `
                 <div class="oc-column-navigation">
-                    ${!isFirst ? `<button class="oc-nav-btn" data-action="move-left" data-from="${category.id}" data-to="${leftCategory.id}">
-                        <i class="fas fa-arrow-left"></i> ${leftCategory.label}
+                    ${!isFirst ? `<button class="oc-nav-btn" data-action="move-left" data-from="${classification.id}" data-to="${leftClassification.id}">
+                        <i class="fas fa-arrow-left"></i> ${leftClassification.label}
                     </button>` : '<span></span>'}
-                    <div class="oc-counter" data-category="${category.id}">
-                        <span class="count">0</span> ${this.options.que_clasifica_label}
+                    <div class="oc-counter" data-classification="${classification.id}">
+                        <span class="count">0</span> ${this.options.itemNamePlural}
                     </div>
-                    ${this.options.editable ? `<button class="oc-sort-btn" data-sort-category="${category.id}" title="Ordena alfábeticamente A-Z"><i class="fas fa-sort-alpha-down"></i> Ordena</button>` : ''}
-                    ${!isLast ? `<button class="oc-nav-btn" data-action="move-right" data-from="${category.id}" data-to="${rightCategory.id}">
-                        ${rightCategory.label} <i class="fas fa-arrow-right"></i>
+                    ${this.options.editable ? `<button class="oc-sort-btn" data-sort-classification="${classification.id}" title="Ordena alfábeticamente A-Z"><i class="fas fa-sort-alpha-down"></i> Ordena</button>` : ''}
+                    ${!isLast ? `<button class="oc-nav-btn" data-action="move-right" data-from="${classification.id}" data-to="${rightClassification.id}">
+                        ${rightClassification.label} <i class="fas fa-arrow-right"></i>
                     </button>` : '<span></span>'}
                 </div>
             ` : `
                 <div class="oc-column-navigation">
-                    <div class="oc-counter" data-category="${category.id}">
+                    <div class="oc-counter" data-classification="${classification.id}">
                         <span class="count">0</span> items
                     </div>
                     ${/* No sort button in read-only mode here either, matching above logic */ ''}
@@ -322,10 +309,10 @@ class ClassifyIt {
             return `
             <div class="oc-column">
                 <div class="oc-column-header">
-                    <div class="oc-column-title">${category.title || category.label}</div>
+                    <div class="oc-column-title">${classification.title || classification.label}</div>
                 </div>
-                <div class="oc-items-list" data-category="${category.id}">
-                    ${this._createItemsHTML(category.id)}
+                <div class="oc-items-list" data-classification="${classification.id}">
+                    ${this._createItemsHTML(classification.id)}
                 </div>
                 ${navigationHTML}
             </div>
@@ -333,96 +320,61 @@ class ClassifyIt {
         }).join('');
     }
 
-    /** Produces the interface for selecting, applying, and managing saved state templates. */
-    _createClassificationManagerHTML() {
-        const savedOptions = this.options.savedClassifications.map(classification => 
-            `<option value="${classification.id}" data-description="${classification.description}">${classification.name}</option>`
-        ).join('');
+    /** Assembles the complete inner HTML of the widget, combining the manager areas, search bar, and item columns. */
+    _createContent() {
 
-        const editarPlantillas = this.options.presetsEditable && this.options.presetsEnabled ?
-            `<button class="oc-manager-btn save" id="new-classification">New</button>
-             <button class="oc-manager-btn save" id="edit-classification">Edit</button>
-             <button class="oc-manager-btn save" id="del-classification">Del</button>
-             ` : '';
+        let classificationManagerHTML = "<div>";
+
+        if(this.options.groupEnabled)
+            classificationManagerHTML += this._createGroupManagerHTML();
+        classificationManagerHTML += "</div>";
+
+        const searchHTML = `
+            <div class="oc-search-stats-row">
+                <div class="oc-global-search">
+                    <input type="text" class="oc-search-input" placeholder="🔎 Busca ${this.options.itemNamePlural}">
+                    <button class="oc-search-clear">×</button>
+                </div>
+                <div class="oc-stats">
+                    Total: <span id="total-count">${this.items.length}</span> ${this.options.itemNamePlural}
+                </div>
+            </div>
+        `;
+        const columnsHTML = this._dragDropColumns();
 
         return `
-            <div class="oc-classification-manager">
-                <div class="oc-manager-group">
-                    <div>
-                    <select class="oc-manager-select" id="load-classification">
-                        <option value="">Seleccione plantilla ...</option>
-                        ${savedOptions}
-                    </select> <button class="oc-manager-btn load" id="apply-classification" disabled>Aplicar Plantilla</button>
-                    ${editarPlantillas}
-                    </div>
-                    <div class="oc-manager-description" id="classification-description"></div>
+            <div class="oc-clasificame">
+                ${classificationManagerHTML}
+                ${searchHTML}
+                <div class="oc-columns">
+                    ${columnsHTML}
                 </div>
             </div>
         `;
     }
-
-    /** Builds the controls used to select collections of items and move them to a specific destination category. */
-    _createGroupManagerHTML() {
-        const groupOptions = this.options.groups.map(group =>
-            `<option value="${group.id}">${group.name} (${group.itemCount} ${this.options.que_clasifica_label})</option>`
-        ).join('');
-
-        const categoryOptions = this.categories.map(category =>
-            `<option value="${category.id}">${category.title || category.label}</option>`
-        ).join('');
-        return `
-            <div class="oc-group-section">
-                <div class="oc-group-controls">
-                    <div class="oc-group-control">
-                        <label>Grupos de </label>
-                        <select class="oc-group-select" id="group-selector">
-                            <option value="">Seleccione grupo...</option>
-                            ${groupOptions}
-                        </select>
-                    </div>
-                    <div class="oc-group-control">
-                        <label>Ponlos en</label>
-                        <select class="oc-group-target-select" id="group-target" disabled>
-                            <option value="">Ponerlos en...</option>
-                            ${categoryOptions}
-                        </select>
-                    </div>
-
-                    <div class="oc-group-control">
-                        <label>&nbsp;</label>
-                        <button class="oc-group-btn" id="apply-group-classification" disabled>¡Ponlos!</button>
-                    </div>
-                    ${this.options.groupEditable && this.options.editable ? `
-                    <div class="oc-group-control">
-                        <label>&nbsp;</label> <!-- For alignment -->
-                        <button class="oc-btn" id="oc-manage-groups-btn">Manage Groups</button>
-                    </div>
-                    ` : ''}
-                </div>`;
-    }
-
+    
     /** Maps the item data into draggable HTML elements containing labels and action buttons. */
-    _createItemsHTML(categoryId) {
-        // Get the default category ID
-        const defaultCategoryId = this._getDefaultCategoryId();
+    _createItemsHTML(classificationId) {
+        // Get the default classification ID
+        const defaultClassificationId = this._getDefaultClassificationId();
 
-        const categoryItems = this.items.filter(item => {
-            const itemCategory = item[this.options.itemsCategoryIdKey] || defaultCategoryId;
-            return itemCategory === categoryId;
+        const classificationItems = this.items.filter(item => {
+            const itemClassification = item[this.options.itemClassificationKey] || defaultClassificationId;
+            return itemClassification === classificationId;
         });
 
-        return categoryItems.map(item => {
-            const itemId = item[this.options.valueId];
-            const itemLabel = item[this.options.valueDisplay];
-            const currentCategory = item[this.options.itemsCategoryIdKey] || defaultCategoryId;
+        return classificationItems.map(item => {
+            const itemIdKey = item[this.options.itemIdKey];
+            const itemlabelKey = item[this.options.itemlabelKey];
+            const currentClassification = item[this.options.itemClassificationKey] || defaultClassificationId;
 
             // Hide individual item classification buttons if not editable or showItemButtons is false
             const toolbarHTML = this.options.editable && this.options.showItemButtons ? `
                 <div class="oc-item-toolbar">
-                    ${this.categories.map(cat => `
-                        <button class="oc-item-btn ${currentCategory === cat.id ? 'pressed' : ''}" 
+                    ${this.classifications.map(cat => `
+                        <button class="oc-item-btn ${currentClassification === cat.id ? 'pressed' : ''}" 
                                 data-target="${cat.id}" 
-                                data-item-id="${itemId}">
+                                data-item-id="${itemIdKey}">
                             ${cat.label}
                         </button>
                     `).join('')}
@@ -433,8 +385,8 @@ class ClassifyIt {
             const itemClass = this.options.editable ? 'oc-item' : 'oc-item oc-item-readonly';
 
             return `
-                <div class="${itemClass}" data-item-id="${itemId}" data-category="${currentCategory}">
-                    <span class="oc-item-label">${itemLabel}</span>
+                <div class="${itemClass}" data-item-id="${itemIdKey}" data-classification="${currentClassification}">
+                    <span class="oc-item-label">${itemlabelKey}</span>
                     ${toolbarHTML}
                 </div>
             `;
@@ -475,16 +427,16 @@ class ClassifyIt {
                     document.body.style.cursor = '';
 
                     const item = evt.item;
-                    const newCategory = evt.to.dataset.category;
-                    const itemId = item.dataset.itemId;
+                    const newClassification = evt.to.dataset.classification;
+                    const itemIdKey = item.dataset.itemIdKey;
 
-                    item.dataset.category = newCategory;
-                    this._updateItemToolbar(item, newCategory);
+                    item.dataset.classification = newClassification;
+                    this._updateItemToolbar(item, newClassification);
                     this._updateCounters();
 
-                    const originalItem = this.items.find(i => i[this.options.valueId] == itemId);
+                    const originalItem = this.items.find(i => i[this.options.itemIdKey] == itemIdKey);
                     if(originalItem) {
-                        originalItem[this.options.itemsCategoryIdKey] = newCategory;
+                        originalItem[this.options.itemClassificationKey] = newClassification;
                     }
                 }
             });
@@ -526,32 +478,27 @@ class ClassifyIt {
         }
 
         if(this.options.editable) {
-            // each item click to move to another category listener
+            // each item click to move to another classification listener
             if(this.options.showItemButtons)
                 this.dialogElement.addEventListener('click', (e) => {
                     if(e.target.classList.contains('oc-item-btn')) {
                         e.preventDefault();
                         e.stopPropagation();
-                        const targetCategory = e.target.dataset.target;
-                        const itemId = e.target.dataset.itemId;
-                        this._moveItemTo(itemId, targetCategory);
+                        const targetClassification = e.target.dataset.target;
+                        const itemIdKey = e.target.dataset.itemIdKey;
+                        this._moveItemTo(itemIdKey, targetClassification);
                     }
                 });
             // move visible items left and/or right listeners
             this.dialogElement.addEventListener('click', (e) => {
                 if(e.target.closest('.oc-nav-btn')) {
                     const btn = e.target.closest('.oc-nav-btn');
-                    const fromCategory = btn.dataset.from;
-                    const toCategory = btn.dataset.to;
-                    this._moveVisibleItems(fromCategory, toCategory);
+                    const fromClassification = btn.dataset.from;
+                    const toClassification = btn.dataset.to;
+                    this._moveVisibleItems(fromClassification, toClassification);
                 }
             });
-            if(this.options.presetsEnabled) {
-                if(this.options.presetsEditable || this.options.savedClassifications.length > 0) {
-                    this._setupPlantillaManager();
-                }
-            }
-
+            
             if(this.options.groupEnabled)
                 this._setupGroupModeListeners();
 
@@ -560,9 +507,9 @@ class ClassifyIt {
                 const sortButton = e.target.closest('.oc-sort-btn');
                 if(sortButton) {
                     e.preventDefault();
-                    const categoryId = sortButton.dataset.sortCategory;
-                    if(categoryId) {
-                        this._sortItemsInCategory(categoryId);
+                    const classificationId = sortButton.dataset.sortClassification;
+                    if(classificationId) {
+                        this._sortItemsInClassification(classificationId);
                     }
                 }
             });
@@ -589,8 +536,105 @@ class ClassifyIt {
         }
     }
 
+    _updateItemToolbar(itemElement, newClassification) {
+        const buttons = itemElement.querySelectorAll('.oc-item-btn');
+        buttons.forEach(btn => {
+            btn.classList.toggle('pressed', btn.dataset.target === newClassification);
+        });
+    }
+
+    _moveItemTo(itemIdKey, targetClassification, showFeedback = true) {
+        if(!this.options.editable) return;
+
+        // If dialogElement is null, just update the item's classification in the data model
+        if(!this.dialogElement) {
+            // Find the item in the items array and update its classification
+            const item = this.items.find(i => i[this.options.itemIdKey].toString() === itemIdKey.toString());
+            if(item) {
+                item[this.options.itemClassificationKey] = targetClassification;
+            }
+            return;
+        }
+
+        const item = this.dialogElement.querySelector(`[data-item-id="${itemIdKey}"]`);
+        const targetList = this.dialogElement.querySelector(`[data-classification="${targetClassification}"]`);
+
+        if(item && targetList && item.dataset.classification !== targetClassification) {
+            item.dataset.classification = targetClassification;
+            this._updateItemToolbar(item, targetClassification);
+            targetList.appendChild(item);
+            this._updateCounters();
+
+            if(showFeedback) {
+                item.style.transform = 'scale(1.05)';
+                setTimeout(() => {
+                    item.style.transform = '';
+                }, 200);
+            }
+        }
+    }
+
+    _moveVisibleItems(fromClassification, toClassification) {
+        if(!this.options.editable) return;
 
 
+        const fromList = this.dialogElement.querySelector(`.oc-items-list[data-classification="${fromClassification}"]`);
+        const toList = this.dialogElement.querySelector(`.oc-items-list[data-classification="${toClassification}"]`);
+
+        if(!fromList || !toList) return;
+
+        const visibleItems = fromList.querySelectorAll('.oc-item:not([style*="display: none"])');
+
+        visibleItems.forEach(item => {
+            item.dataset.classification = toClassification;
+            this._updateItemToolbar(item, toClassification);
+            toList.appendChild(item);
+        });
+
+        this._updateCounters();
+    }
+    
+    // region: groups __________________________________________________________________________________________________
+
+    /** Builds the controls used to select collections of items and move them to a specific destination classification. */
+    _createGroupManagerHTML() {
+        const groupOptions = this.options.groups.map(group =>
+            `<option value="${group.id}">${group.name} (${group.itemCount} ${this.options.itemNamePlural})</option>`
+        ).join('');
+
+        const classificationOptions = this.classifications.map(classification =>
+            `<option value="${classification.id}">${classification.title || classification.label}</option>`
+        ).join('');
+        return `
+            <div class="oc-group-section">
+                <div class="oc-group-controls">
+                    <div class="oc-group-control">
+                        <label>Grupos de </label>
+                        <select class="oc-group-select" id="group-selector">
+                            <option value="">Seleccione grupo...</option>
+                            ${groupOptions}
+                        </select>
+                    </div>
+                    <div class="oc-group-control">
+                        <label>Ponlos en</label>
+                        <select class="oc-group-target-select" id="group-target" disabled>
+                            <option value="">Ponerlos en...</option>
+                            ${classificationOptions}
+                        </select>
+                    </div>
+
+                    <div class="oc-group-control">
+                        <label>&nbsp;</label>
+                        <button class="oc-group-btn" id="apply-group-classification" disabled>¡Ponlos!</button>
+                    </div>
+                    ${this.options.groupEditable && this.options.editable ? `
+                    <div class="oc-group-control">
+                        <label>&nbsp;</label> <!-- For alignment -->
+                        <button class="oc-btn" id="oc-manage-groups-btn">Manage Groups</button>
+                    </div>
+                    ` : ''}
+                </div>`;
+    }
 
     /** Coordinates selection changes and button clicks for the bulk-moving group classification feature */
     _setupGroupModeListeners() {
@@ -599,21 +643,21 @@ class ClassifyIt {
             if(manageGroupsBtn) {
                 manageGroupsBtn.addEventListener('click', () => {
                     const groupManagementCategories = [
-                        { id: 'available_groups', label: 'Disponible', title: 'Disponibles' },
-                        { id: 'selected_groups', label: 'En Grupo', title: 'En el grupo' }
+                        {id: 'available_groups', label: 'Disponible', title: 'Disponibles'},
+                        {id: 'selected_groups', label: 'En Grupo', title: 'En el grupo'}
                     ];
 
                     const childInstanceOptions = {
-                        title: 'Create Composite Group',
+                        title: 'Crear un grupo',
                         editable: true,
                         showItemButtons: true,
                         presetsEnabled: false,
                         presetsEditable: false,
                         groupEnabled: true,
                         groupEditable: false, // CRITICAL: Prevent recursion
-                        valueId: 'id',
-                        valueDisplay: 'name',
-                        itemsCategoryIdKey: 'category',
+                        itemIdKey: 'id',
+                        itemlabelKey: 'name',
+                        itemClassificationKey: 'classification',
                         // dialogClass: 'oc-child-clasificame-dialog' // Optional: for different styling
                     };
 
@@ -622,11 +666,11 @@ class ClassifyIt {
                     const compositeGroupName = prompt("Nombre del grupo:");
                     if(!compositeGroupName || compositeGroupName.trim() === '') {
                         alert("Nombre es requerido");
-                        return; 
+                        return;
                     }
                     const compositeGroupDescription = prompt("Descripción (opciona):") || "";
 
-                    groupMgmtInstance.openDialog({ title: `Define Composite Group: ${compositeGroupName}` }) // Pass dynamic title
+                    groupMgmtInstance.openDialog({title: `Define Composite Group: ${compositeGroupName}`}) // Pass dynamic title
                         .then(result => {
                             const selectedBaseGroupIds = result.selected_groups || [];
 
@@ -638,7 +682,7 @@ class ClassifyIt {
                                     itemCount: selectedBaseGroupIds.length, // Number of base groups
                                     isEditable: true, // Assuming composite groups can be edited
                                     isComposite: true,
-                                    baseGroupIds: selectedBaseGroupIds 
+                                    baseGroupIds: selectedBaseGroupIds
                                 };
 
                                 // Add to the parent instance's groups array
@@ -670,10 +714,10 @@ class ClassifyIt {
             return;
         }
 
-        groupSelector.addEventListener('change', async (e) => {
+        groupSelector.addEventListener('change', async(e) => {
             const groupId = e.target.value;
             if(groupId) {
-                await this.loadGroupItems(groupId);
+                // await this.loadGroupItems(groupId);
                 targetSelector.disabled = false;
             } else {
                 this.clearGroupItems();
@@ -691,9 +735,9 @@ class ClassifyIt {
 
         applyBtn.addEventListener('click', () => {
             const groupId = groupSelector.value;
-            const targetCategory = targetSelector.value;
-            if(groupId && targetCategory) {
-                this.applyGroupClassification(groupId, targetCategory);
+            const targetClassification = targetSelector.value;
+            if(groupId && targetClassification) {
+                this.applyGroupClassification(groupId, targetClassification);
             }
         });
 
@@ -701,241 +745,35 @@ class ClassifyIt {
             if(e.target.classList.contains('oc-item-btn')) {
                 e.preventDefault();
                 e.stopPropagation();
-                const targetCategory = e.target.dataset.target;
-                const itemId = e.target.dataset.itemId;
-                this._moveItemTo(itemId, targetCategory);
+                const targetClassification = e.target.dataset.target;
+                const itemIdKey = e.target.dataset.itemIdKey;
+                this._moveItemTo(itemIdKey, targetClassification);
             }
         });
 
         this.dialogElement.addEventListener('click', (e) => {
             if(e.target.closest('.oc-nav-btn')) {
                 const btn = e.target.closest('.oc-nav-btn');
-                const fromCategory = btn.dataset.from;
-                const toCategory = btn.dataset.to;
-                this._moveVisibleItems(fromCategory, toCategory);
+                const fromClassification = btn.dataset.from;
+                const toClassification = btn.dataset.to;
+                this._moveVisibleItems(fromClassification, toClassification);
             }
         });
 
         this._updateCounters();
     }
 
-    _updateItemToolbar(itemElement, newCategory) {
-        const buttons = itemElement.querySelectorAll('.oc-item-btn');
-        buttons.forEach(btn => {
-            btn.classList.toggle('pressed', btn.dataset.target === newCategory);
-        });
-    }
-
-    _moveItemTo(itemId, targetCategory, showFeedback = true) {
-        if(!this.options.editable) return;
-
-        // If dialogElement is null, just update the item's category in the data model
-        if (!this.dialogElement) {
-            // Find the item in the items array and update its category
-            const item = this.items.find(i => i[this.options.valueId].toString() === itemId.toString());
-            if (item) {
-                item[this.options.itemsCategoryIdKey] = targetCategory;
-            }
-            return;
-        }
-
-        const item = this.dialogElement.querySelector(`[data-item-id="${itemId}"]`);
-        const targetList = this.dialogElement.querySelector(`[data-category="${targetCategory}"]`);
-
-        if(item && targetList && item.dataset.category !== targetCategory) {
-            item.dataset.category = targetCategory;
-            this._updateItemToolbar(item, targetCategory);
-            targetList.appendChild(item);
-            this._updateCounters();
-
-            if(showFeedback) {
-                item.style.transform = 'scale(1.05)';
-                setTimeout(() => {
-                    item.style.transform = '';
-                }, 200);
-            }
-        }
-    }
-
-    _moveVisibleItems(fromCategory, toCategory) {
-        if(!this.options.editable) return;
-
-
-        const fromList = this.dialogElement.querySelector(`.oc-items-list[data-category="${fromCategory}"]`);
-        const toList = this.dialogElement.querySelector(`.oc-items-list[data-category="${toCategory}"]`);
-
-        if(!fromList || !toList) return;
-
-        const visibleItems = fromList.querySelectorAll('.oc-item:not([style*="display: none"])');
-
-        visibleItems.forEach(item => {
-            item.dataset.category = toCategory;
-            this._updateItemToolbar(item, toCategory);
-            toList.appendChild(item);
-        });
-
-        this._updateCounters();
-    }
-
-    /** Manages the logic for the template dropdown selection and enabling the "Apply" functionality. */
-    _setupPlantillaManager() {
-        if(!this.options.editable) return;
-
-        const loadSelect = this.dialogElement.querySelector('#load-classification');
-        const descriptionDiv = this.dialogElement.querySelector('#classification-description');
-        const applyBtn = this.dialogElement.querySelector('#apply-classification');
-
-        if(!loadSelect || !descriptionDiv || !applyBtn) return;
-
-        loadSelect.addEventListener('change', (e) => {
-            const selectedOption = e.target.selectedOptions[0];
-            if(selectedOption && selectedOption.value) {
-                const description = selectedOption.dataset.description || 'No description available';
-                descriptionDiv.textContent = description;
-                applyBtn.disabled = false;
-            } else {
-                descriptionDiv.textContent = 'Select a classification to see its description';
-                applyBtn.disabled = true;
-            }
-        });
-
-        const saveBtn = this.dialogElement.querySelector('#save-classification');
-        if(saveBtn) {
-            saveBtn.addEventListener('click', () => {
-                this.saveClassification();
-            });
-        }
-
-        applyBtn.addEventListener('click', () => {
-            const selectedId = loadSelect.value;
-            if(selectedId) {
-                this.applyClassification(selectedId);
-            }
-        });
-    }
-
-    async saveClassification() {
-        if(!this.options.editable) return;
-
-        const nameInput = this.dialogElement.querySelector('#save-name');
-        const descriptionInput = this.dialogElement.querySelector('#save-description');
-
-        const name = nameInput.value.trim();
-        const description = descriptionInput.value.trim();
-
-        if(!name) {
-            alert('Please enter a name for the classification');
-            return;
-        }
-
-        const currentClassification = this.getValue();
-
-        const saveData = {
-            name: name,
-            description: description,
-            classification: currentClassification,
-            categories: this.categories,
-            timestamp: new Date().toISOString(),
-            totalItems: this.items.length
-        };
-
-        try {
-            setTimeout(() => {
-                alert(`Classification "${name}" saved successfully!`);
-                nameInput.value = '';
-                descriptionInput.value = '';
-
-                this.options.savedClassifications.push({
-                    id: Date.now().toString(),
-                    name: name,
-                    description: description,
-                    classification: currentClassification
-                });
-
-                this.refreshLoadDropdown();
-            }, 500);
-
-        } catch (error) {
-            console.error('Error saving classification:', error);
-            alert('Error saving classification. Please try again.');
-        }
-    }
-
-    async applyClassification(classificationId) {
-        if(!this.options.editable) return;
-
-        const savedClassification = this.options.savedClassifications.find(c => c.id === classificationId);
-
-        if(!savedClassification) {
-            return;
-        }
-        const currentItemIds = new Set(this.items.map(item => item[this.options.valueId].toString()));
-
-        Object.entries(savedClassification.classification).forEach(([categoryId, itemIds]) => {
-            itemIds.forEach(itemId => {
-                if(currentItemIds.has(itemId.toString())) {
-                    this._moveItemTo(itemId, categoryId, false);
-                }
-            });
-        });
-
-        this._updateCounters();
-    }
-
-    refreshLoadDropdown() {
-        const loadSelect = this.dialogElement.querySelector('#load-classification');
-        if(loadSelect) {
-            const savedOptions = this.options.savedClassifications.map(classification => 
-                `<option value="${classification.id}" data-description="${classification.description}">${classification.name}</option>`
-            ).join('');
-
-            loadSelect.innerHTML = `
-                <option value="">Select a saved classification...</option>
-                ${savedOptions}
-            `;
-        }
-    }
 
     async loadGroupItems(groupId) {
 
-
-        try {
-            const mockGroupItems = this.getMockGroupItems(groupId);
-            this.selectedGroupItems = mockGroupItems;
-
-        } catch (error) {
-            console.error('Error loading group items:', error);
-            this.selectedGroupItems = [];
-        }
     }
 
-    getMockGroupItems(groupId) {
-        const groupData = {
-            'admin': [
-                {id: 3, name: "Alice Johnson", category: "write"},
-                {id: 6, name: "Diana Prince", category: "write"}
-            ],
-            'users': [
-                {id: 1, name: "John Doe", category: "none"},
-                {id: 2, name: "Jane Smith", category: "read"},
-                {id: 4, name: "Bob Williams", category: "none"},
-                {id: 5, name: "Charlie Brown", category: "read"}
-            ],
-            'managers': [
-                {id: 2, name: "Jane Smith", category: "read"},
-                {id: 7, name: "Edward Norton", category: "none"},
-                {id: 8, name: "Fiona Apple", category: "read"}
-            ]
-        };
-
-        return groupData[groupId] || [];
-    }
 
     clearGroupItems() {
         this.selectedGroupItems = [];
     }
 
-    applyGroupClassification(groupId, targetCategory) {
+    applyGroupClassification(groupId, targetClassification) {
         if(!this.options.editable) return;
 
         if(!this.selectedGroupItems.length) {
@@ -945,10 +783,10 @@ class ClassifyIt {
 
         let movedCount = 0;
         this.selectedGroupItems.forEach(item => {
-            const originalItem = this.items.find(i => i[this.options.valueId] == item.id);
+            const originalItem = this.items.find(i => i[this.options.itemIdKey] == item.id);
             if(originalItem) {
-                originalItem[this.options.itemsCategoryIdKey] = targetCategory;
-                this._moveItemTo(item.id, targetCategory, false);
+                originalItem[this.options.itemClassificationKey] = targetClassification;
+                this._moveItemTo(item.id, targetClassification, false);
                 movedCount++;
             }
         });
@@ -960,7 +798,7 @@ class ClassifyIt {
         }
 
         // Update UI elements only if dialogElement exists
-        if (this.dialogElement) {
+        if(this.dialogElement) {
             const groupSelector = this.dialogElement.querySelector('#group-selector');
             const targetSelector = this.dialogElement.querySelector('#group-target');
             const applyBtn = this.dialogElement.querySelector('#apply-group-classification');
@@ -976,12 +814,13 @@ class ClassifyIt {
         this.clearGroupItems();
     }
 
+    // endregion: groups _______________________________________________________________________________________________
 
     _updateCounters() {
 
-        this.categories.forEach(category => {
-            const list = this.dialogElement.querySelector(`.oc-items-list[data-category="${category.id}"]`);
-            const counter = this.dialogElement.querySelector(`.oc-counter[data-category="${category.id}"] .count`);
+        this.classifications.forEach(classification => {
+            const list = this.dialogElement.querySelector(`.oc-items-list[data-classification="${classification.id}"]`);
+            const counter = this.dialogElement.querySelector(`.oc-counter[data-classification="${classification.id}"] .count`);
 
             if(list && counter) {
                 const allItems = list.querySelectorAll('.oc-item');
@@ -999,13 +838,12 @@ class ClassifyIt {
         }
     }
 
-
-    _sortItemsInCategory(categoryId) {
+    _sortItemsInClassification(classificationId) {
         if(!this.options.editable) return;
 
-        const itemList = this.dialogElement.querySelector(`.oc-items-list[data-category="${categoryId}"]`);
+        const itemList = this.dialogElement.querySelector(`.oc-items-list[data-classification="${classificationId}"]`);
         if(!itemList) {
-            console.warn(`Sort: Item list not found for category ${categoryId}`);
+            console.warn(`Sort: Item list not found for classification ${classificationId}`);
             return;
         }
 
@@ -1014,18 +852,73 @@ class ClassifyIt {
         const itemsData = items.map(itemElement => {
             const labelElement = itemElement.querySelector('.oc-item-label');
             return {
-                id: itemElement.dataset.itemId,
+                id: itemElement.dataset.itemIdKey,
                 label: labelElement ? labelElement.textContent.trim() : '',
                 element: itemElement
             };
         });
 
         itemsData.sort((a, b) => {
-            return a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' });
+            return a.label.localeCompare(b.label, undefined, {numeric: true, sensitivity: 'base'});
         });
         // Re-append sorted items
         itemsData.forEach(itemData => {
             itemList.appendChild(itemData.element);
         });
     }
+
+    /**
+     * Centralized API handler for ClassifyIt logic.
+     * Follows the 'Read-from-API' protocol and validates the 'success: ok' data contract.
+     *
+     * @param {string} action - The server-side action to execute (e.g., 'tags_get').
+     * @param {Object} payload - Data parameters to send to the API.
+     * @returns {Promise<Object>} - The JSON response on success, or an alert/error on failure.
+     */
+    async _apiCall(action, payload = {}) {
+        try {
+            const formData = new URLSearchParams();
+            formData.append('action', action);
+
+            // Append all payload keys to the form data
+            for(const [key, value] of Object.entries(payload)) {
+                formData.append(key, value);
+            }
+
+            const response = await fetch(this.options.apiUrl, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: formData
+            });
+
+            // 1. Check HTTP Status (Strictly 200 required)
+            if(response.status !== 200) {
+                const errorText = await response.text();
+                // Show the raw server error message to the user via DialogIt alert
+                DialogIt.alert(errorText || `Error HTTP: ${response.status}`, 'Error de Servidor', 'error');
+                // Fail the promise
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            const json = await response.json();
+
+            // 2. Check Data Contract (Strictly success: 'ok' required)
+            if(json.success !== 'ok') {
+                const msg = json.error || json.message || 'Error desconocido';
+                // Show the specific logic error message from the server to the user
+                DialogIt.alert(msg, 'Aviso', 'warning');
+                // Fail the promise
+                return Promise.reject(json);
+            }
+
+            // 3. Success: Fulfill the promise with the data payload
+            return json;
+
+        } catch(error) {
+            console.error(`_apiCall Failure [${action}]:`, error);
+            // Bubble up the failure to ensure calling logic (like Startup) can halt
+            throw error;
+        }
+    }
+
 }
